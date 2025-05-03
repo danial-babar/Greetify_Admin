@@ -119,8 +119,13 @@ export default function CreateCardPage() {
       // Make sure each element has all required properties for the mobile app
       const processedElements = cardData.elements.map(el => {
         // Get the position value, ensuring it's consistent across all position properties
-        const posX = typeof el.positionX === 'number' ? el.positionX : 0;
-        const posY = typeof el.positionY === 'number' ? el.positionY : 0;
+        const posX = typeof el.positionX === 'number' ? Math.round(el.positionX) : 0;
+        const posY = typeof el.positionY === 'number' ? Math.round(el.positionY) : 0;
+        const scale = el.scale || 1;
+        
+        // Calculate approximate text dimensions to help mobile positioning
+        const textWidth = (el.text?.length || 1) * scale * 8;
+        const textHeight = scale * 20;
         
         return {
           ...el,
@@ -129,7 +134,7 @@ export default function CreateCardPage() {
           text: el.text || '',
           fontStyleIndex: el.fontStyleIndex || 0,
           colorIndex: el.colorIndex || 0,
-          scale: el.scale || 1,
+          scale: scale,
           rotate: el.rotate || 0,
           bold: !!el.bold,
           italic: !!el.italic,
@@ -140,7 +145,10 @@ export default function CreateCardPage() {
           translateX: posX,
           translateY: posY,
           centerX: posX,
-          centerY: posY
+          centerY: posY,
+          // Include text dimensions to help mobile rendering position correctly
+          width: textWidth,
+          height: textHeight
         };
       });
       

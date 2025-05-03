@@ -1,5 +1,5 @@
 {
+  "/cards/create/page": "app/cards/create/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/cards/page": "app/cards/page.js",
-  "/cards/create/page": "app/cards/create/page.js"
+  "/cards/page": "app/cards/page.js"
 }

@@ -28,6 +28,8 @@ interface CardElement {
   alignment: 'left' | 'center' | 'right';
   centerX?: number;
   centerY?: number;
+  width?: number;
+  height?: number;
 }
 
 interface CardData {
@@ -74,27 +76,32 @@ const CARD_HEIGHT = 620;
 // Convert values from editor (pixels) to backend values (percentages)
 const convertToBackendValues = (elements: CardElement[], containerWidth: number, containerHeight: number) => {
   return elements.map(el => {
-    // Calculate percentages correctly for mobile app positioning
-    // Mobile app uses percentages for layout, but needs exact positions
+    // The mobile app likely uses different coordinate calculations,
+    // so we'll store all possible position representations to ensure compatibility
+    
+    // Standard percentage calculation (0-100%)
     const posXPercent = Math.round((el.positionX / containerWidth) * 100);
     const posYPercent = Math.round((el.positionY / containerHeight) * 100);
     
-    // Instead of calculating an offset, we'll use the exact position for centerX/Y
-    // This ensures the text appears at the exact same position in the mobile app
-    const centerX = el.positionX;
-    const centerY = el.positionY;
+    // Store the raw pixel values for exact positioning
+    const exactX = Math.round(el.positionX);
+    const exactY = Math.round(el.positionY);
     
+    // For mobile positioning, we'll set all position properties to the same values
+    // This ensures the text appears exactly where it was placed in the editor
     return {
       ...el,
-      // Store position in percentages as the mobile app expects
+      // Store both percentage and absolute positions
       positionX: posXPercent,
       positionY: posYPercent,
-      // Store exact pixel coordinates to ensure precise positioning
-      translateX: el.positionX,
-      translateY: el.positionY,
-      // For mobile app, use the exact position as center points
-      centerX: Math.round(centerX),
-      centerY: Math.round(centerY),
+      translateX: exactX,
+      translateY: exactY,
+      centerX: exactX,
+      centerY: exactY,
+      // Include explicit width/height approximation for text element
+      // This helps mobile rendering position correctly
+      width: el.text.length * el.scale * 8,
+      height: el.scale * 20,
       // Ensure all required properties are included
       type: 'text' as const,
       fontStyleIndex: el.fontStyleIndex || 0,
@@ -222,11 +229,17 @@ export default function CardEditor({
     // Calculate the center of the container
     const centerPositionX = containerSize.width / 2;
     const centerPositionY = containerSize.height / 2;
+    const defaultScale = 1;
+    const defaultText = 'New Text';
+    
+    // Calculate approximate dimensions for the text
+    const textWidth = defaultText.length * defaultScale * 8;
+    const textHeight = defaultScale * 20;
     
     const newElement: CardElement = {
       id: Date.now().toString(),
       type: 'text',
-      text: 'New Text',
+      text: defaultText,
       // Position text in the center of the card
       positionX: centerPositionX,
       positionY: centerPositionY,
@@ -235,12 +248,15 @@ export default function CardEditor({
       translateY: centerPositionY,
       centerX: centerPositionX,
       centerY: centerPositionY,
+      // Include explicit width/height for the text element
+      width: textWidth,
+      height: textHeight,
       // Visual properties
       colorIndex: 0, // Black by default
       fontStyleIndex: 0, // First font by default
       bold: false,
       italic: false,
-      scale: 1,
+      scale: defaultScale,
       rotate: 0,
       alignment: 'center'
     };
@@ -269,9 +285,34 @@ export default function CardEditor({
   const updateElement = (id: string, updates: Partial<CardElement>) => {
     const newCardData = {
       ...cardData,
-      elements: cardData.elements.map(el => 
-        el.id === id ? { ...el, ...updates } : el
-      )
+      elements: cardData.elements.map(el => {
+        if (el.id !== id) return el;
+        
+        // Create the updated element
+        const updatedElement = { ...el, ...updates };
+        
+        // If the scale or text has changed, recalculate width and height
+        if (updates.scale !== undefined || updates.text !== undefined) {
+          const scale = updatedElement.scale || 1;
+          const text = updatedElement.text || '';
+          
+          updatedElement.width = text.length * scale * 8;
+          updatedElement.height = scale * 20;
+        }
+        
+        // If position changed, update all position properties consistently
+        if (updates.positionX !== undefined || updates.positionY !== undefined) {
+          const posX = updatedElement.positionX;
+          const posY = updatedElement.positionY;
+          
+          updatedElement.translateX = posX;
+          updatedElement.translateY = posY;
+          updatedElement.centerX = posX;
+          updatedElement.centerY = posY;
+        }
+        
+        return updatedElement;
+      })
     };
     
     setCardData(newCardData);
@@ -279,15 +320,24 @@ export default function CardEditor({
   };
 
   const handleDragStop = (id: string, e: any, data: { x: number, y: number }) => {
+    // Get the element being dragged
+    const element = cardData.elements.find(el => el.id === id);
+    if (!element) return;
+    
+    // Round the positions to ensure pixel-perfect alignment
+    const posX = Math.round(data.x);
+    const posY = Math.round(data.y);
+    
     // When dragging stops, update all position-related properties together
+    // to ensure perfect alignment in both admin panel and mobile app
     updateElement(id, {
-      positionX: data.x,
-      positionY: data.y,
-      // Ensure translateX/Y and centerX/Y match exactly to maintain positioning consistency
-      translateX: data.x,
-      translateY: data.y,
-      centerX: data.x,
-      centerY: data.y
+      positionX: posX,
+      positionY: posY,
+      // Ensure all position properties match exactly
+      translateX: posX,
+      translateY: posY,
+      centerX: posX,
+      centerY: posY
     });
   };
 

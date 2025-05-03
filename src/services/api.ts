@@ -52,6 +52,8 @@ export interface CardElement {
   alignment: 'left' | 'center' | 'right';
   centerX?: number;
   centerY?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface Card {
