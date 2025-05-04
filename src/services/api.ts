@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Configure axios with base URL and default headers
 const api = axios.create({
-  baseURL: 'http://192.168.100.5:1000/api', 
+  baseURL: process.env.NEXT_PUBLIC_API_URL, 
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -41,19 +41,15 @@ export interface CardElement {
   text: string;
   positionX: number;
   positionY: number;
-  translateX?: number;
-  translateY?: number;
   colorIndex: number;
   fontStyleIndex: number;
   bold: boolean;
-  italic?: boolean;
+  italic: boolean;
   scale: number;
   rotate: number;
   alignment: 'left' | 'center' | 'right';
-  centerX?: number;
-  centerY?: number;
-  width?: number;
-  height?: number;
+  lineHeight: number;
+  fontSize: number;
 }
 
 export interface Card {

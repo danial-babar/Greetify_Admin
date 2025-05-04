@@ -1,4 +1,4 @@
-// File: H:\Greetify\greetify-admin\src\app\cards\create\page.tsx
+// File: /Users/mac/Desktop/nextProjects/Greetify_Admin/src/app/cards/create/page.tsx
 import * as entry from '../../../../../src/app/cards/create/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

@@ -17,8 +17,6 @@ interface CardElement {
   text: string;
   positionX: number;
   positionY: number;
-  translateX?: number;
-  translateY?: number;
   colorIndex: number;
   fontStyleIndex: number;
   bold: boolean;
@@ -26,10 +24,8 @@ interface CardElement {
   scale: number;
   rotate: number;
   alignment: 'left' | 'center' | 'right';
-  centerX?: number;
-  centerY?: number;
-  width?: number;
-  height?: number;
+  lineHeight: number;
+  fontSize: number;
 }
 
 interface CardData {
@@ -74,35 +70,11 @@ const CARD_WIDTH = 350;
 const CARD_HEIGHT = 620;
 
 // Convert values from editor (pixels) to backend values (percentages)
-const convertToBackendValues = (elements: CardElement[], containerWidth: number, containerHeight: number) => {
+const convertToBackendValues = (elements: CardElement[]) => {
   return elements.map(el => {
-    // The mobile app likely uses different coordinate calculations,
-    // so we'll store all possible position representations to ensure compatibility
     
-    // Standard percentage calculation (0-100%)
-    const posXPercent = Math.round((el.positionX / containerWidth) * 100);
-    const posYPercent = Math.round((el.positionY / containerHeight) * 100);
-    
-    // Store the raw pixel values for exact positioning
-    const exactX = Math.round(el.positionX);
-    const exactY = Math.round(el.positionY);
-    
-    // For mobile positioning, we'll set all position properties to the same values
-    // This ensures the text appears exactly where it was placed in the editor
     return {
       ...el,
-      // Store both percentage and absolute positions
-      positionX: posXPercent,
-      positionY: posYPercent,
-      translateX: exactX,
-      translateY: exactY,
-      centerX: exactX,
-      centerY: exactY,
-      // Include explicit width/height approximation for text element
-      // This helps mobile rendering position correctly
-      width: el.text.length * el.scale * 8,
-      height: el.scale * 20,
-      // Ensure all required properties are included
       type: 'text' as const,
       fontStyleIndex: el.fontStyleIndex || 0,
       colorIndex: el.colorIndex || 0,
@@ -110,51 +82,9 @@ const convertToBackendValues = (elements: CardElement[], containerWidth: number,
       rotate: el.rotate || 0,
       bold: !!el.bold,
       italic: !!el.italic,
-      alignment: el.alignment || 'center'
-    };
-  });
-};
-
-// Convert values from backend (percentages) to editor values (pixels)
-const convertFromBackendValues = (elements: CardElement[], containerWidth: number, containerHeight: number) => {
-  return elements.map(el => {
-    // For most accurate positioning, use translateX/Y when available
-    // as they contain the exact pixel positions from the editor
-    let posX, posY;
-    
-    if (el.translateX !== undefined && el.translateY !== undefined) {
-      // Use the absolute pixel values if available
-      posX = el.translateX;
-      posY = el.translateY;
-    } else if (el.centerX !== undefined && el.centerY !== undefined) {
-      // If translateX/Y not available but centerX/Y is, use that
-      posX = el.centerX;
-      posY = el.centerY;
-    } else {
-      // Fall back to calculating from percentages
-      posX = (el.positionX / 100) * containerWidth;
-      posY = (el.positionY / 100) * containerHeight;
-    }
-    
-    // Ensure all properties are properly set with consistent positioning
-    return {
-      ...el,
-      id: el.id || Date.now().toString(),
-      type: 'text' as const,
-      text: el.text || '',
-      positionX: typeof posX === 'number' ? posX : 0,
-      positionY: typeof posY === 'number' ? posY : 0,
-      translateX: typeof posX === 'number' ? posX : 0,
-      translateY: typeof posY === 'number' ? posY : 0,
-      centerX: typeof posX === 'number' ? posX : 0,
-      centerY: typeof posY === 'number' ? posY : 0,
-      fontStyleIndex: el.fontStyleIndex || 0,
-      colorIndex: el.colorIndex || 0,
-      scale: el.scale || 1,
-      rotate: el.rotate || 0,
-      bold: !!el.bold,
-      italic: !!el.italic,
-      alignment: el.alignment || 'center'
+      alignment: el.alignment || 'center',
+      lineHeight: el.lineHeight || 1,
+      fontSize: el.fontSize || 5
     };
   });
 };
@@ -226,39 +156,21 @@ export default function CardEditor({
 
   // Element management
   const addElement = () => {
-    // Calculate the center of the container
-    const centerPositionX = containerSize.width / 2;
-    const centerPositionY = containerSize.height / 2;
-    const defaultScale = 1;
-    const defaultText = 'New Text';
-    
-    // Calculate approximate dimensions for the text
-    const textWidth = defaultText.length * defaultScale * 8;
-    const textHeight = defaultScale * 20;
-    
     const newElement: CardElement = {
       id: Date.now().toString(),
       type: 'text',
-      text: defaultText,
-      // Position text in the center of the card
-      positionX: centerPositionX,
-      positionY: centerPositionY,
-      // Use the same positions for all positioning properties to ensure consistency
-      translateX: centerPositionX,
-      translateY: centerPositionY,
-      centerX: centerPositionX,
-      centerY: centerPositionY,
-      // Include explicit width/height for the text element
-      width: textWidth,
-      height: textHeight,
-      // Visual properties
-      colorIndex: 0, // Black by default
-      fontStyleIndex: 0, // First font by default
+      text: 'New text',
+      positionX: 0,
+      positionY: 0,
+      colorIndex: 0,
+      fontStyleIndex: 0,
       bold: false,
       italic: false,
-      scale: defaultScale,
-      rotate: 0,
-      alignment: 'center'
+      scale: 1,
+      rotate: 0, // 0 radians
+      alignment: 'center',
+      lineHeight: 1,
+      fontSize: 5
     };
     
     const newCardData = {
@@ -291,26 +203,6 @@ export default function CardEditor({
         // Create the updated element
         const updatedElement = { ...el, ...updates };
         
-        // If the scale or text has changed, recalculate width and height
-        if (updates.scale !== undefined || updates.text !== undefined) {
-          const scale = updatedElement.scale || 1;
-          const text = updatedElement.text || '';
-          
-          updatedElement.width = text.length * scale * 8;
-          updatedElement.height = scale * 20;
-        }
-        
-        // If position changed, update all position properties consistently
-        if (updates.positionX !== undefined || updates.positionY !== undefined) {
-          const posX = updatedElement.positionX;
-          const posY = updatedElement.positionY;
-          
-          updatedElement.translateX = posX;
-          updatedElement.translateY = posY;
-          updatedElement.centerX = posX;
-          updatedElement.centerY = posY;
-        }
-        
         return updatedElement;
       })
     };
@@ -324,20 +216,14 @@ export default function CardEditor({
     const element = cardData.elements.find(el => el.id === id);
     if (!element) return;
     
-    // Round the positions to ensure pixel-perfect alignment
-    const posX = Math.round(data.x);
-    const posY = Math.round(data.y);
     
-    // When dragging stops, update all position-related properties together
-    // to ensure perfect alignment in both admin panel and mobile app
+    const posXPercent = Math.round((data.x / containerSize.width) * 100);
+    const posYPercent = Math.round((data.y / containerSize.height) * 100);
+    
+    // Update position with percentages
     updateElement(id, {
-      positionX: posX,
-      positionY: posY,
-      // Ensure all position properties match exactly
-      translateX: posX,
-      translateY: posY,
-      centerX: posX,
-      centerY: posY
+      positionX: posXPercent,
+      positionY: posYPercent
     });
   };
 
@@ -365,7 +251,7 @@ export default function CardEditor({
     const width = containerRef.current.offsetWidth;
     const height = containerRef.current.offsetHeight;
     
-    const elementsForBackend = convertToBackendValues(cardData.elements, width, height);
+    const elementsForBackend = convertToBackendValues(cardData.elements);
     
     console.log("Preparing card data for save:", {
       ...cardData,
@@ -386,6 +272,7 @@ export default function CardEditor({
   };
   
   const selectedElementData = getSelectedElementData();
+  {console.log('elements', cardData.elements)}
 
   return (
     <div className="flex flex-col h-full">
@@ -427,7 +314,7 @@ export default function CardEditor({
       <div className="flex flex-grow">
         <div 
           ref={containerRef}
-          className="border border-gray-300 rounded-lg relative overflow-hidden"
+          className="border border-gray-300 rounded-lg relative overflow-hidden flex items-center justify-center"
           style={{ 
             backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
             backgroundSize: 'cover',
@@ -448,11 +335,13 @@ export default function CardEditor({
               </div>
             </div>
           )}
-          
           {cardData.elements.map((element) => (
             <Draggable
               key={element.id}
-              defaultPosition={{ x: element.positionX, y: element.positionY }}
+              defaultPosition={{ 
+                x: ((element.positionX) / 100) * containerSize.width, 
+                y: ((element.positionY) / 100) * containerSize.height
+              }}
               onStop={(e, data) => handleDragStop(element.id, e, data)}
               bounds="parent"
             >
@@ -463,14 +352,16 @@ export default function CardEditor({
                 <div
                   style={{
                     fontFamily: EDITOR_FONTS[element.fontStyleIndex]?.value || 'Arial',
-                    fontSize: `${element.scale * 16}px`,
+                    fontSize: `${(element.fontSize / 100) * containerSize.width}px`,
                     color: editorColors[element.colorIndex] || '#000000',
                     fontWeight: element.bold ? 'bold' : 'normal',
                     fontStyle: element.italic ? 'italic' : 'normal',
                     textAlign: element.alignment,
-                    transform: `rotate(${element.rotate}deg)`,
                     padding: '5px',
                     minWidth: '50px',
+                    lineHeight: element.lineHeight,
+                    transform: `rotate(${element.rotate}rad)`,
+                    whiteSpace: 'pre-wrap'
                   }}
                 >
                   {element.text}
@@ -492,26 +383,26 @@ export default function CardEditor({
           ))}
         </div>
         
-        <div className="w-1/3 ml-4 border border-gray-200 rounded-lg p-4 bg-white overflow-y-auto">
-          <h3 className="font-medium text-lg mb-4">Element Properties</h3>
-          
+        <div className="w-80 border-l border-gray-200 p-4 overflow-y-auto">
           {selectedElementData ? (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Text Content
+                  Text
                 </label>
-                <input
-                  type="text"
+                <textarea
                   value={selectedElementData.text}
-                  onChange={(e) => updateElement(selectedElementData.id, { text: e.target.value })}
+                  onChange={(e) => updateElement(selectedElementData.id, { 
+                    text: e.target.value
+                  })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  rows={3}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Font Family
+                  Font Style
                 </label>
                 <select
                   value={selectedElementData.fontStyleIndex}
@@ -519,75 +410,90 @@ export default function CardEditor({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 >
                   {EDITOR_FONTS.map((font, index) => (
-                    <option key={font.value} value={index}>{font.name}</option>
+                    <option key={index} value={index}>
+                      {font.name}
+                    </option>
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Scale (Font Size)
+                  Font Size
                 </label>
                 <input
                   type="range"
                   min="1"
-                  max="5"
-                  step="0.1"
-                  value={selectedElementData.scale}
-                  onChange={(e) => updateElement(selectedElementData.id, { scale: parseFloat(e.target.value) })}
+                  max="100"
+                  value={selectedElementData.fontSize}
+                  onChange={(e) => updateElement(selectedElementData.id, { fontSize: parseInt(e.target.value) })}
                   className="w-full"
                 />
-                <div className="text-right text-sm text-gray-500">{Math.round(selectedElementData.scale * 16)}px</div>
+                <div className="text-right text-sm text-gray-500">{selectedElementData.fontSize}%</div>
               </div>
-              
-              <div className="flex items-center space-x-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Style
-                  </label>
-                  <div className="flex space-x-2">
-                    <button
-                      className={`px-3 py-1 border ${selectedElementData.bold ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md`}
-                      onClick={() => updateElement(selectedElementData.id, { bold: !selectedElementData.bold })}
-                    >
-                      B
-                    </button>
-                    <button
-                      className={`px-3 py-1 border ${selectedElementData.italic ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md italic`}
-                      onClick={() => updateElement(selectedElementData.id, { italic: !selectedElementData.italic })}
-                    >
-                      I
-                    </button>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Alignment
-                  </label>
-                  <div className="flex space-x-2">
-                    <button
-                      className={`px-3 py-1 border ${selectedElementData.alignment === 'left' ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md`}
-                      onClick={() => updateElement(selectedElementData.id, { alignment: 'left' })}
-                    >
-                      L
-                    </button>
-                    <button
-                      className={`px-3 py-1 border ${selectedElementData.alignment === 'center' ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md`}
-                      onClick={() => updateElement(selectedElementData.id, { alignment: 'center' })}
-                    >
-                      C
-                    </button>
-                    <button
-                      className={`px-3 py-1 border ${selectedElementData.alignment === 'right' ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md`}
-                      onClick={() => updateElement(selectedElementData.id, { alignment: 'right' })}
-                    >
-                      R
-                    </button>
-                  </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Line Height
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3"
+                  step="0.1"
+                  value={selectedElementData.lineHeight}
+                  onChange={(e) => updateElement(selectedElementData.id, { lineHeight: parseFloat(e.target.value) })}
+                  className="w-full"
+                />
+                <div className="text-right text-sm text-gray-500">{selectedElementData.lineHeight}</div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Style
+                </label>
+                <div className="flex space-x-2">
+                  <button
+                    className={`px-3 py-1 border ${selectedElementData.bold ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md font-bold`}
+                    onClick={() => updateElement(selectedElementData.id, { bold: !selectedElementData.bold })}
+                  >
+                    B
+                  </button>
+                  <button
+                    className={`px-3 py-1 border ${selectedElementData.italic ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md italic`}
+                    onClick={() => updateElement(selectedElementData.id, { italic: !selectedElementData.italic })}
+                  >
+                    I
+                  </button>
                 </div>
               </div>
-              
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alignment
+                </label>
+                <div className="flex space-x-2">
+                  <button
+                    className={`px-3 py-1 border ${selectedElementData.alignment === 'left' ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md`}
+                    onClick={() => updateElement(selectedElementData.id, { alignment: 'left' })}
+                  >
+                    L
+                  </button>
+                  <button
+                    className={`px-3 py-1 border ${selectedElementData.alignment === 'center' ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md`}
+                    onClick={() => updateElement(selectedElementData.id, { alignment: 'center' })}
+                  >
+                    C
+                  </button>
+                  <button
+                    className={`px-3 py-1 border ${selectedElementData.alignment === 'right' ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md`}
+                    onClick={() => updateElement(selectedElementData.id, { alignment: 'right' })}
+                  >
+                    R
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Rotation
@@ -596,13 +502,17 @@ export default function CardEditor({
                   type="range"
                   min="0"
                   max="360"
-                  value={selectedElementData.rotate}
-                  onChange={(e) => updateElement(selectedElementData.id, { rotate: parseInt(e.target.value) })}
+                  value={Math.round(selectedElementData.rotate * (180 / Math.PI))} // Convert radians to degrees for display
+                  onChange={(e) => updateElement(selectedElementData.id, { 
+                    rotate: (parseInt(e.target.value) * Math.PI) / 180 // Convert degrees to radians for storage
+                  })}
                   className="w-full"
                 />
-                <div className="text-right text-sm text-gray-500">{selectedElementData.rotate}°</div>
+                <div className="text-right text-sm text-gray-500">
+                  {Math.round(selectedElementData.rotate * (180 / Math.PI))}°
+                </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Color
@@ -619,7 +529,7 @@ export default function CardEditor({
                   ))}
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Position
@@ -633,9 +543,7 @@ export default function CardEditor({
                       onChange={(e) => {
                         const newX = parseInt(e.target.value);
                         updateElement(selectedElementData.id, { 
-                          positionX: newX,
-                          translateX: newX,
-                          centerX: newX
+                          positionX: newX
                         });
                       }}
                       className="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
@@ -649,9 +557,7 @@ export default function CardEditor({
                       onChange={(e) => {
                         const newY = parseInt(e.target.value);
                         updateElement(selectedElementData.id, { 
-                          positionY: newY,
-                          translateY: newY,
-                          centerY: newY
+                          positionY: newY
                         });
                       }}
                       className="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
@@ -669,4 +575,4 @@ export default function CardEditor({
       </div>
     </div>
   );
-} 
+}
