@@ -26,13 +26,14 @@ export interface Category {
   id: string;
   name: string;
   image?: string;
+  background_linear_gradient?: [string, string]; // Array of two color values (hex, rgb, or rgba)
 }
 
 export interface SubCategory {
   id: string;
   name: string;
   category_id: string;
-  image?: string;
+  background_color: string; // Color value in hex, rgb, or rgba format
 }
 
 export interface CardElement {
@@ -57,7 +58,7 @@ export interface Card {
   name: string;
   category_id: string;
   sub_category_id: string;
-  background_image?: string;
+  background_image?: Blob;
   preview_image?: string;
   elements: CardElement[];
   createdAt?: string;
@@ -152,21 +153,13 @@ export const subCategoryAPI = {
     return response.data;
   },
   
-  create: async (data: FormData) => {
-    const response = await api.post('/subcategory', data, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
+  create: async (data: { name: string; category_id: string; background_color: string }) => {
+    const response = await api.post('/subcategory', data);
     return response.data;
   },
   
-  update: async (id: string, data: FormData) => {
-    const response = await api.put(`/subcategory/${id}`, data, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
+  update: async (id: string, data: { name: string; category_id: string; background_color: string }) => {
+    const response = await api.put(`/subcategory/${id}`, data);
     return response.data;
   },
   
@@ -261,4 +254,4 @@ export const dataURItoBlob = (dataURI: string) => {
   return new Blob([ia], { type: mimeString });
 }
 
-export default api; 
+export default api;

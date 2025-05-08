@@ -4,116 +4,107 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import CardEditor from '@/components/cards/CardEditor';
-import { Category, SubCategory, Card, categoryAPI, subCategoryAPI, cardAPI, dataURItoBlob } from '@/services/api';
+import { Category, SubCategory, Card, categoryAPI, subCategoryAPI, cardAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
 
 export default function EditCardPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { id } = params;
-  
   const [cardName, setCardName] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedSubCategoryId, setSelectedSubCategoryId] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [filteredSubCategories, setFilteredSubCategories] = useState<SubCategory[]>([]);
-  const [cardData, setCardData] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [previewImage, setPreviewImage] = useState<File | null>(null);
+  const [cardData, setCardData] = useState<Card | null>(null);
 
-  // Fetch card, categories, and subcategories data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch card details
-        const cardDetails = await cardAPI.getById(id);
-        console.log("Card details:", cardDetails);
-        
-        if (cardDetails) {
-          const cardDataToUse = Array.isArray(cardDetails) ? cardDetails[0] : 
-                               (cardDetails.data ? cardDetails.data : cardDetails);
-          
-          setCardData(cardDataToUse);
-          setCardName(cardDataToUse.name);
-          setSelectedCategoryId(cardDataToUse.category_id);
-          setSelectedSubCategoryId(cardDataToUse.sub_category_id);
-        } else {
-          toast.error("Card not found");
-          router.push('/cards');
-          return;
-        }
-        
-        // Fetch categories
-        const categoriesData = await categoryAPI.getAll();
-        console.log("Categories data:", categoriesData);
-        
-        // Check if the categories data is in the expected format
-        if (Array.isArray(categoriesData)) {
-          setCategories(categoriesData);
-        } else if (categoriesData && Array.isArray(categoriesData.data)) {
-          setCategories(categoriesData.data);
-        } else {
-          console.error("Unexpected categories data format:", categoriesData);
-          toast.error("Invalid categories data format");
-        }
-        
-        // Fetch all subcategories
-        const subCategoriesData = await subCategoryAPI.getAll();
-        console.log("Subcategories data:", subCategoriesData);
-        
-        // Check if the subcategories data is in the expected format
-        if (Array.isArray(subCategoriesData)) {
-          setSubCategories(subCategoriesData);
-        } else if (subCategoriesData && Array.isArray(subCategoriesData.data)) {
-          setSubCategories(subCategoriesData.data);
-        } else {
-          console.error("Unexpected subcategories data format:", subCategoriesData);
-          toast.error("Invalid subcategories data format");
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Failed to load card data. Please try again.");
-        setLoading(false);
-      }
-    };
-    
     fetchData();
-  }, [id, router]);
+  }, [params.id]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [cardResponse, categoriesResponse] = await Promise.all([
+        cardAPI.getById(params.id),
+        categoryAPI.getAll()
+      ]);
+
+      const card = cardResponse.data;
+      const categoriesData = Array.isArray(categoriesResponse) ? categoriesResponse : categoriesResponse.data;
+
+      setCardName(card.name);
+      setSelectedCategoryId(card.category_id);
+      setSelectedSubCategoryId(card.sub_category_id);
+      setCardData(card);
+      setCategories(categoriesData);
+
+      // Fetch subcategories for the selected category
+      if (card.category_id) {
+        const subCategoriesResponse = await subCategoryAPI.getByCategory(card.category_id);
+        const subCategoriesData = Array.isArray(subCategoriesResponse) ? subCategoriesResponse : subCategoriesResponse.data;
+        setFilteredSubCategories(subCategoriesData);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter subcategories based on selected category
   useEffect(() => {
     if (selectedCategoryId) {
       const fetchSubCategories = async () => {
         try {
-          const subCategoriesData = await subCategoryAPI.getByCategory(selectedCategoryId);
-          console.log("Subcategories by category:", subCategoriesData);
+          setLoading(true);
+          const response = await subCategoryAPI.getByCategory(selectedCategoryId);
           
-          // Check if the subcategories data is in the expected format
-          if (Array.isArray(subCategoriesData)) {
-            setFilteredSubCategories(subCategoriesData);
-          } else if (subCategoriesData && Array.isArray(subCategoriesData.data)) {
-            setFilteredSubCategories(subCategoriesData.data);
+          let subCategoriesData;
+          if (Array.isArray(response)) {
+            subCategoriesData = response;
+          } else if (response && Array.isArray(response.data)) {
+            subCategoriesData = response.data;
           } else {
-            console.error("Unexpected subcategories data format:", subCategoriesData);
+            console.error("Unexpected subcategories response format:", response);
+            toast.error("Invalid subcategories data format");
             setFilteredSubCategories([]);
+            return;
           }
+          
+          const filtered = subCategoriesData.filter(
+            (subCat: SubCategory) => subCat.category_id === selectedCategoryId
+          );
+          
+          setFilteredSubCategories(filtered);
           
         } catch (error) {
           console.error("Error fetching subcategories:", error);
           toast.error("Failed to load subcategories");
           setFilteredSubCategories([]);
+        } finally {
+          setLoading(false);
         }
       };
       
       fetchSubCategories();
+      
+      // Reset subcategory selection
+      setSelectedSubCategoryId('');
     } else {
       setFilteredSubCategories([]);
+      setSelectedSubCategoryId('');
     }
   }, [selectedCategoryId]);
+
+  const handlePreviewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file)
+      setPreviewImage(file);
+  };
 
   const handleCardSave = async (updatedCardData: Card) => {
     if (!cardName.trim()) {
@@ -145,6 +136,10 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
         const posY = typeof el.positionY === 'number' ? Math.round(el.positionY) : 0;
         const scale = el.scale || 1;
         
+        // Calculate approximate text dimensions to help mobile positioning
+        const textWidth = (el.text?.length || 1) * scale * 8;
+        const textHeight = scale * 20;
+        
         return {
           ...el,
           // Ensure the type is text and all values are in the correct format
@@ -160,29 +155,32 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
           // Use consistent position values for all position-related properties
           positionX: posX,
           positionY: posY,
+          translateX: posX,
+          translateY: posY,
+          centerX: posX,
+          centerY: posY,
+          // Include text dimensions to help mobile rendering position correctly
+          width: textWidth,
+          height: textHeight
         };
       });
       
       // Convert elements to the format expected by the backend
       const elementsJson = JSON.stringify(processedElements);
-      console.log("Saving elements:", elementsJson);
       formData.append('elements', elementsJson);
       
-      // Handle image uploads
-      if (updatedCardData.background_image && updatedCardData.background_image.startsWith('data:')) {
-        const backgroundBlob = dataURItoBlob(updatedCardData.background_image);
-        formData.append('background_image', backgroundBlob, 'background.jpg');
-        
-        // For preview image, we'll use the same image for simplicity
-        formData.append('preview_image', backgroundBlob, 'preview.jpg');
+      // Handle background image upload
+      if (updatedCardData.background_image) {
+        formData.append('background_image', updatedCardData.background_image);
       }
       
-      console.log("Updating card with form data:", formData);
+      // Handle preview image upload
+      if (previewImage) {
+        formData.append('preview_image', previewImage);
+      }
       
       // Update the card
-      const response = await cardAPI.update(id, formData);
-      console.log("Card update response:", response);
-      
+      await cardAPI.update(params.id, formData);
       toast.success("Card updated successfully!");
       setSaving(false);
       router.push('/cards');
@@ -192,16 +190,6 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-64">
-          <p className="text-gray-500">Loading card data...</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout>
@@ -240,6 +228,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
                     name="category"
                     value={selectedCategoryId}
                     onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    disabled={loading}
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   >
                     <option value="">Select a category</option>
@@ -262,7 +251,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
                     name="subcategory"
                     value={selectedSubCategoryId}
                     onChange={(e) => setSelectedSubCategoryId(e.target.value)}
-                    disabled={!selectedCategoryId}
+                    disabled={!selectedCategoryId || loading}
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   >
                     <option value="">Select a subcategory</option>
@@ -274,6 +263,31 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
                   </select>
                 </div>
               </div>
+
+              <div className="sm:col-span-3">
+                <label htmlFor="preview-image" className="block text-sm font-medium text-gray-700">
+                  Preview Image
+                </label>
+                <div className="mt-1">
+                  <input
+                    type="file"
+                    id="preview-image"
+                    name="preview-image"
+                    accept="image/*"
+                    onChange={handlePreviewImageChange}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                  />
+                  {(previewImage || cardData?.preview_image) && (
+                    <div className="mt-2">
+                      <img
+                        src={previewImage ? URL.createObjectURL(previewImage) : cardData?.preview_image}
+                        alt="Preview image"
+                        className="h-20 w-20 object-cover rounded"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           
@@ -282,12 +296,10 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
             <h2 className="text-lg font-medium text-gray-900 mb-4">Design Card</h2>
             
             <div className="min-h-[650px]">
-              {cardData && (
-                <CardEditor 
-                  initialCard={cardData}
-                  onSave={handleCardSave}
-                />
-              )}
+              <CardEditor 
+                onSave={handleCardSave}
+                initialData={cardData}
+              />
             </div>
           </div>
         </div>

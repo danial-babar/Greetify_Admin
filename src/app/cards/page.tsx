@@ -6,24 +6,20 @@ import Link from 'next/link';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Card, cardAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
-import Image from 'next/image';
 
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   
-  // Image base URL for the backend
-  const IMAGE_BASE_URL = 'http://192.168.100.5:1000/';
-
   // Fetch cards from API
   useEffect(() => {
     const fetchCards = async () => {
       try {
         setLoading(true);
-        const cardsData = await cardAPI.getAll();
+        let cardsData = await cardAPI.getAll();
         console.log("Cards data:", cardsData);
-        
+        cardsData = cardsData.data;
         // Handle different response formats
         if (Array.isArray(cardsData)) {
           setCards(cardsData);
@@ -59,16 +55,6 @@ export default function CardsPage() {
         setDeleting(null);
       }
     }
-  };
-
-  // Function to prepare image URL
-  const getImageUrl = (imagePath: string) => {
-    // If it's already a full URL or a data URL, return it as is
-    if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
-      return imagePath;
-    }
-    // Otherwise, prepend the backend URL
-    return `${IMAGE_BASE_URL}${imagePath}`;
   };
 
   return (
@@ -134,13 +120,13 @@ export default function CardsPage() {
                           <div className="h-16 w-16 bg-gray-100 rounded overflow-hidden relative">
                             {card.preview_image ? (
                               <img 
-                                src={getImageUrl(card.preview_image)} 
+                                src={card.preview_image} 
                                 alt={card.name} 
                                 className="h-full w-full object-cover" 
                               />
                             ) : card.background_image ? (
                               <img 
-                                src={getImageUrl(card.background_image)} 
+                                src={card.background_image} 
                                 alt={card.name} 
                                 className="h-full w-full object-cover" 
                               />

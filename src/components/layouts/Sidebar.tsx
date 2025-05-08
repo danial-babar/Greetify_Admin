@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ForwardRefExoticComponent, SVGProps, RefAttributes } from 'react';
 
 type NavItem = {
   name: string;
   href: string;
-  icon: (props: { className: string }) => JSX.Element;
+  icon: ForwardRefExoticComponent<Omit<SVGProps<SVGSVGElement>, "ref"> & { title?: string | undefined; titleId?: string | undefined; } & RefAttributes<SVGSVGElement>>;
 };
 
 import {
@@ -13,11 +14,13 @@ import {
   SquaresPlusIcon,
   UsersIcon,
   Cog6ToothIcon,
+  TagIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'Categories', href: '/categories', icon: SquaresPlusIcon },
+  { name: 'Subcategories', href: '/subcategories', icon: TagIcon },
   { name: 'Cards', href: '/cards', icon: PhotoIcon },
   { name: 'Users', href: '/users', icon: UsersIcon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
