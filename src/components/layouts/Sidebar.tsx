@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ForwardRefExoticComponent, SVGProps, RefAttributes } from 'react';
 
 type NavItem = {
@@ -16,6 +16,7 @@ import {
   Cog6ToothIcon,
   TagIcon,
 } from '@heroicons/react/24/outline';
+import Cookies from 'js-cookie';
 
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
@@ -28,6 +29,14 @@ const navigation: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+    Cookies.remove('user');
+    router.push('/');
+    }
+  };
 
   return (
     <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
@@ -65,7 +74,14 @@ export default function Sidebar() {
           <div className="flex items-center">
             <div>
               <p className="text-sm font-medium text-gray-700">Admin User</p>
-              <p className="text-xs font-medium text-gray-500">Log out</p>
+              <div className="flex items-center">
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Logout
+              </button>
+            </div>
             </div>
           </div>
         </div>

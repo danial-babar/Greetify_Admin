@@ -1,7 +1,7 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
-  "/subcategories/create/page": "app/subcategories/create/page.js",
-  "/subcategories/page": "app/subcategories/page.js",
   "/cards/edit/[id]/page": "app/cards/edit/[id]/page.js",
-  "/cards/page": "app/cards/page.js"
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/categories/page": "app/categories/page.js",
+  "/categories/edit/[id]/page": "app/categories/edit/[id]/page.js"
 }

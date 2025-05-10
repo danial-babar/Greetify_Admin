@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 // Configure axios with base URL and default headers
 const api = axios.create({
@@ -12,7 +13,8 @@ const api = axios.create({
 // Add authorization header when token is available
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const user = Cookies.get('user');
+    const token = user ? JSON.parse(user).token : null;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -76,27 +78,20 @@ export interface User {
 // Auth API
 export const authAPI = {
   login: async (email: string, password: string) => {
-    const response = await api.post('/users/login', { email, password });
-    if (response.data.token) {
-      localStorage.setItem('auth_token', response.data.token);
-    }
+    const response = await api.post('/user/login', { email, password });
     return response.data;
   },
-  
-  logout: () => {
-    localStorage.removeItem('auth_token');
-  },
-  
+
   register: async (userData: { name: string, email: string, password: string }) => {
-    return await api.post('/users/register', userData);
+    return await api.post('/user/register', userData);
   },
   
   forgotPassword: async (email: string) => {
-    return await api.post('/users/forgot-password', { email });
+    return await api.post('/user/forgot-password', { email });
   },
   
   resetPassword: async (token: string, password: string) => {
-    return await api.post('/users/reset-password', { token, password });
+    return await api.post('/user/reset-password', { token, password });
   }
 };
 
@@ -144,12 +139,12 @@ export const subCategoryAPI = {
   },
   
   getByCategory: async (categoryId: string) => {
-    const response = await api.get(`/subcategory/${categoryId}`);
+    const response = await api.get(`/subcategory?category_id=${categoryId}`);
     return response.data;
   },
   
   getById: async (id: string) => {
-    const response = await api.get(`/subcategory/single/${id}`);
+    const response = await api.get(`/subcategory/${id}`);
     return response.data;
   },
   

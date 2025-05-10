@@ -109,7 +109,7 @@ export default function CardEditor({
       elements: [],
     }
   );
-  console.log("cardData", cardData);
+
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [history, setHistory] = useState<CardData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);

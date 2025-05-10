@@ -1,9 +1,9 @@
 {
   "pages": {
-    "/page": [
+    "/cards/edit/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/cards/edit/[id]/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,55 +11,30 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
     "/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/page.js"
-    ],
-    "/cards/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/cards/page.js"
-    ],
-    "/cards/create/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/cards/create/page.js"
     ],
     "/categories/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/categories/page.js"
     ],
-    "/subcategories/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/subcategories/page.js"
-    ],
     "/categories/edit/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/categories/edit/[id]/page.js"
     ],
-    "/categories/create/page": [
+    "/subcategories/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/categories/create/page.js"
-    ],
-    "/subcategories/edit/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/subcategories/edit/[id]/page.js"
-    ],
-    "/cards/edit/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/cards/edit/[id]/page.js"
-    ],
-    "/subcategories/create/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/subcategories/create/page.js"
+      "static/chunks/app/subcategories/page.js"
     ]
   }
 }
