@@ -44,7 +44,7 @@ export interface CardElement {
   text: string;
   positionX: number;
   positionY: number;
-  colorIndex: number;
+  color: string;
   fontStyleIndex: number;
   bold: boolean;
   italic: boolean;
@@ -60,7 +60,7 @@ export interface Card {
   name: string;
   category_id: string;
   sub_category_id: string;
-  background_image?: Blob;
+  background_image?: string;
   preview_image?: string;
   elements: CardElement[];
   createdAt?: string;
@@ -73,6 +73,12 @@ export interface User {
   email: string;
   role: string;
   createdAt: string;
+}
+
+// Colors API
+export interface Color {
+  id: string;
+  color: string; // hex value
 }
 
 // Auth API
@@ -226,6 +232,30 @@ export const userAPI = {
     const response = await api.delete(`/users/${id}`);
     return response.data;
   }
+};
+
+// Colors API
+export const colorAPI = {
+  getAll: async () => {
+    const response = await api.get('/color');
+    return response.data;
+  },
+  getById: async (id: string) => {
+    const response = await api.get(`/color/${id}`);
+    return response.data;
+  },
+  create: async (data: { color: string }) => {
+    const response = await api.post('/color', data);
+    return response.data;
+  },
+  update: async (id: string, data: { color: string }) => {
+    const response = await api.put(`/color/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string) => {
+    const response = await api.delete(`/color/${id}`);
+    return response.data;
+  },
 };
 
 // Convert a base64 string to a Blob object

@@ -16,11 +16,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/page.js"
     ],
-    "/categories/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/categories/page.js"
-    ],
     "/cards/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -31,15 +26,30 @@
       "static/chunks/main-app.js",
       "static/chunks/app/cards/edit/[id]/page.js"
     ],
-    "/cards/create/page": [
+    "/categories/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/cards/create/page.js"
+      "static/chunks/app/categories/page.js"
     ],
-    "/categories/create/page": [
+    "/categories/edit/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/categories/create/page.js"
+      "static/chunks/app/categories/edit/[id]/page.js"
+    ],
+    "/colors/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/colors/page.js"
+    ],
+    "/colors/create/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/colors/create/page.js"
+    ],
+    "/colors/edit/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/colors/edit/[id]/page.js"
     ]
   }
 }

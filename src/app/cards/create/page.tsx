@@ -151,7 +151,7 @@ export default function CreateCardPage() {
           type: "text" as const,
           text: el.text || "",
           fontStyleIndex: el.fontStyleIndex || 0,
-          colorIndex: el.colorIndex || 0,
+          color: el.color || 0,
           scale: scale,
           rotate: el.rotate || 0,
           bold: !!el.bold,

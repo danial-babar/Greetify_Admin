@@ -1,31 +1,34 @@
 import { useState, useRef, useEffect } from "react";
 import Draggable from "react-draggable";
-import { HexColorPicker } from "react-colorful";
 import { useDropzone } from "react-dropzone";
+import { HexAlphaColorPicker } from "react-colorful";
 import {
   TrashIcon,
   PlusIcon,
   ArrowUturnLeftIcon,
   ArrowUturnRightIcon,
   CheckIcon,
+  SwatchIcon,
 } from "@heroicons/react/24/outline";
+import { colorAPI, Color } from "@/services/api";
 
 // Match mobile app data structure exactly
 interface CardElement {
   id: string;
-  type: "text";
-  text: string;
+  type: "text" | "sticker";
+  text?: string;
+  color?: string;
+  fontStyleIndex?: number;
+  bold?: boolean;
+  italic?: boolean;
+  alignment?: "left" | "center" | "right";
+  lineHeight?: number;
+  fontSize?: number;
+  src?: string; // image URL or base64
   positionX: number;
   positionY: number;
-  colorIndex: number;
-  fontStyleIndex: number;
-  bold: boolean;
-  italic?: boolean;
   scale: number;
   rotate: number;
-  alignment: "left" | "center" | "right";
-  lineHeight: number;
-  fontSize: number;
 }
 
 interface CardData {
@@ -33,7 +36,7 @@ interface CardData {
   name: string;
   category_id: string;
   sub_category_id: string;
-  background_image?: Blob;
+  background_image?: string;
   preview_image?: string;
   elements: CardElement[];
 }
@@ -55,25 +58,9 @@ const EDITOR_FONTS = [
   { name: "Fuggles", value: "Fuggles-Regular", bold: null },
 ];
 
-// Mobile app color palette
-const editorColors = [
-  "#000000", // Black
-  "#FFFFFF", // White
-  "#FF0000", // Red
-  "#00FF00", // Green
-  "#0000FF", // Blue
-  "#FFFF00", // Yellow
-  "#FF00FF", // Magenta
-  "#00FFFF", // Cyan
-  "#FFA500", // Orange
-  "#800080", // Purple
-  "#A52A2A", // Brown
-  "#808080", // Gray
-];
-
 // Card dimensions (matching mobile app constants)
-const CARD_WIDTH = 350;
-const CARD_HEIGHT = 620;
+const CARD_WIDTH = 450;
+const CARD_HEIGHT = CARD_WIDTH * (4 / 3);
 
 // Convert values from editor (pixels) to backend values (percentages)
 const convertToBackendValues = (elements: CardElement[]) => {
@@ -82,7 +69,7 @@ const convertToBackendValues = (elements: CardElement[]) => {
       ...el,
       type: "text" as const,
       fontStyleIndex: el.fontStyleIndex || 0,
-      colorIndex: el.colorIndex || 0,
+      color: el.color || "#000000",
       scale: el.scale || 1,
       rotate: el.rotate || 0,
       bold: !!el.bold,
@@ -116,10 +103,17 @@ export default function CardEditor({
   const [backgroundImage, setBackgroundImage] = useState<Blob>();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
   const [containerSize, setContainerSize] = useState({
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
   });
+
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const [colorsList, setColorsList] = useState<string[]>([]);
+
+  const stickerInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -140,6 +134,15 @@ export default function CardEditor({
       setCardData(initialData);
     }
   }, [initialData]);
+
+  useEffect(() => {
+    colorAPI.getAll().then((data) => {
+      let arr: Color[] = [];
+      if (Array.isArray(data)) arr = data;
+      else if (Array.isArray(data?.data)) arr = data.data;
+      setColorsList(arr.map((c) => c.color));
+    });
+  }, []);
 
   // History management
   const addToHistory = (newCardData: CardData) => {
@@ -170,7 +173,7 @@ export default function CardEditor({
       text: "New text",
       positionX: 0,
       positionY: 0,
-      colorIndex: 0,
+      color: "#000000FF",
       fontStyleIndex: 0,
       bold: false,
       italic: false,
@@ -313,6 +316,26 @@ export default function CardEditor({
 
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
   console.log("cardData", cardData);
+
+  const addSticker = (src: string) => {
+    const newElement: CardElement = {
+      id: Date.now().toString(),
+      type: "sticker",
+      src,
+      positionX: 0,
+      positionY: 0,
+      scale: 1,
+      rotate: 0,
+    };
+    const newCardData = {
+      ...cardData,
+      elements: [...cardData.elements, newElement],
+    };
+    setCardData(newCardData);
+    addToHistory(newCardData);
+    setSelectedElement(newElement.id);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between mb-4">
@@ -340,6 +363,13 @@ export default function CardEditor({
             <PlusIcon className="h-4 w-4 mr-1" />
             Add Text
           </button>
+          <button
+            className="px-3 py-1 bg-primary-100 text-primary-800 rounded flex items-center text-sm"
+            onClick={() => stickerInputRef.current?.click()}
+          >
+            <PlusIcon className="h-4 w-4 mr-1" />
+            Add Sticker
+          </button>
         </div>
         <button
           className="px-4 py-1 bg-primary-600 text-white rounded flex items-center"
@@ -362,6 +392,7 @@ export default function CardEditor({
               : "none",
             backgroundSize: "cover",
             backgroundPosition: "center",
+            backgroundRepeat:'no-repeat',
             width: CARD_WIDTH,
             height: CARD_HEIGHT,
           }}
@@ -379,66 +410,103 @@ export default function CardEditor({
                 Drag and drop an image here, or click to select
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Recommended size: 1080x1920 pixels
+                Image will be stretched to fit card dimensions
               </p>
             </div>
           </div>
-          {cardData.elements.map((element) => (
-            <Draggable
-              key={element.id}
-              defaultPosition={{
-                x: (element.positionX / 100) * containerSize.width,
-                y: (element.positionY / 100) * containerSize.height,
-              }}
-              onStop={(e, data) => handleDragStop(element.id, e, data)}
-              bounds="parent"
-            >
-              <div
-                className={`absolute cursor-move ${
-                  selectedElement === element.id
-                    ? "ring-2 ring-primary-500"
-                    : ""
-                }`}
-                onClick={() => setSelectedElement(element.id)}
+          {cardData.elements.map((element) =>
+            element.type === "text" ? (
+              <Draggable
+                key={element.id}
+                defaultPosition={{
+                  x: (element.positionX / 100) * containerSize.width,
+                  y: (element.positionY / 100) * containerSize.height,
+                }}
+                onStop={(e, data) => handleDragStop(element.id, e, data)}
+                bounds="parent"
               >
                 <div
-                  style={{
-                    fontFamily:
-                      element.bold && EDITOR_FONTS[element.fontStyleIndex]?.bold
-                        ? EDITOR_FONTS[element.fontStyleIndex].bold
-                        : EDITOR_FONTS[element.fontStyleIndex]?.value ||
-                          "Arial",
-                    fontSize: `${
-                      (element.fontSize / 100) * containerSize.width
-                    }px`,
-                    color: editorColors[element.colorIndex] || "#000000",
-                    // fontWeight: element.bold && !EDITOR_FONTS[element.fontStyleIndex]?.bold ? 'bold' : 'normal',
-                    // fontStyle: element.italic ? 'italic' : 'normal',
-                    textAlign: element.alignment,
-                    padding: "5px",
-                    minWidth: "50px",
-                    lineHeight: element.lineHeight,
-                    transform: `rotate(${element.rotate}rad)`,
-                    whiteSpace: "pre-wrap",
-                  }}
+                  className={`absolute cursor-move ${
+                    selectedElement === element.id
+                      ? "ring-2 ring-primary-500"
+                      : ""
+                  }`}
+                  onClick={() => setSelectedElement(element.id)}
                 >
-                  {element.text}
-                </div>
-
-                {selectedElement === element.id && (
-                  <button
-                    className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeElement(element.id);
+                  <div
+                    style={{
+                      fontFamily:
+                        element.bold && EDITOR_FONTS[element.fontStyleIndex]?.bold
+                          ? EDITOR_FONTS[element.fontStyleIndex].bold!
+                          : EDITOR_FONTS[element.fontStyleIndex]?.value ||
+                            "Arial",
+                      fontSize: `${
+                        (element.fontSize / 100) * containerSize.width
+                      }px`,
+                      color: element.color,
+                      textAlign: element.alignment,
+                      padding: "5px",
+                      minWidth: "50px",
+                      lineHeight: element.lineHeight,
+                      transform: `rotate(${element.rotate}rad)`,
+                      whiteSpace: "pre-wrap",
                     }}
                   >
-                    <TrashIcon className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            </Draggable>
-          ))}
+                    {element.text}
+                  </div>
+
+                  {selectedElement === element.id && (
+                    <button
+                      className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeElement(element.id);
+                      }}
+                    >
+                      <TrashIcon className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </Draggable>
+            ) : (
+              <Draggable
+                key={element.id}
+                defaultPosition={{
+                  x: (element.positionX / 100) * containerSize.width,
+                  y: (element.positionY / 100) * containerSize.height,
+                }}
+                onStop={(e, data) => handleDragStop(element.id, e, data)}
+                bounds="parent"
+              >
+                <div
+                  className={`absolute cursor-move ${
+                    selectedElement === element.id ? "ring-2 ring-primary-500" : ""
+                  }`}
+                  onClick={() => setSelectedElement(element.id)}
+                  style={{
+                    transform: `scale(${element.scale}) rotate(${element.rotate}rad)`,
+                  }}
+                >
+                  <img
+                    src={element.src}
+                    alt="Sticker"
+                    style={{ maxWidth: 120, maxHeight: 120 }}
+                  />
+                  {selectedElement === element.id && (
+                    <button
+                      className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeElement(element.id);
+                      }}
+                    >
+                      <TrashIcon className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </Draggable>
+            )
+          )}
         </div>
 
         <div className="w-80 border-l border-gray-200 p-4 overflow-y-auto">
@@ -612,12 +680,6 @@ export default function CardEditor({
                   >
                     B
                   </button>
-                  {/* <button
-                    className={`px-3 py-1 border ${selectedElementData.italic ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md italic`}
-                    onClick={() => updateElement(selectedElementData.id, { italic: !selectedElementData.italic })}
-                  >
-                    I
-                  </button> */}
                 </div>
               </div>
 
@@ -699,16 +761,49 @@ export default function CardEditor({
                   Color
                 </label>
                 <div className="grid grid-cols-4 gap-2 mt-2">
-                  {editorColors.map((color, index) => (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowColorPicker((v) => !v)}
+                      className={`w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center cursor-pointer ${
+                        !colorsList.includes(selectedElementData.color)
+                          ? "ring-2 ring-primary-500 ring-offset-2"
+                          : ""
+                      }`}
+                      style={{
+                        background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+                      }}
+                      title="Custom color"
+                    ></button>
+                    {showColorPicker && (
+                      <div className="absolute z-50 mt-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg left-10">
+                        <HexAlphaColorPicker
+                          color={selectedElementData.color}
+                          onChange={(color) => updateElement(selectedElementData.id, { color })}
+                        />
+                        <div className="flex justify-end mt-2">
+                          <button
+                            type="button"
+                            className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                            onClick={() => setShowColorPicker(false)}
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {colorsList.map((color, index) => (
                     <button
                       key={index}
-                      onClick={() =>
+                      onClick={() => {
                         updateElement(selectedElementData.id, {
-                          colorIndex: index,
-                        })
-                      }
-                      className={`w-8 h-8 rounded-full ${
-                        selectedElementData.colorIndex === index
+                          color: color,
+                        });
+                      }}
+                      className={`w-8 h-8 rounded-full border border-gray-300 ${
+                        selectedElementData.color === color
                           ? "ring-2 ring-primary-500 ring-offset-2"
                           : ""
                       }`}
@@ -762,6 +857,23 @@ export default function CardEditor({
           )}
         </div>
       </div>
+
+      <input
+        type="file"
+        accept="image/*"
+        ref={stickerInputRef}
+        style={{ display: "none" }}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              if (ev.target?.result) addSticker(ev.target.result as string);
+            };
+            reader.readAsDataURL(file);
+          }
+        }}
+      />
     </div>
   );
 }

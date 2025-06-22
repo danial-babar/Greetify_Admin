@@ -15,6 +15,7 @@ import {
   UsersIcon,
   Cog6ToothIcon,
   TagIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/outline';
 import Cookies from 'js-cookie';
 
@@ -23,6 +24,7 @@ const navigation: NavItem[] = [
   { name: 'Categories', href: '/categories', icon: SquaresPlusIcon },
   { name: 'Subcategories', href: '/subcategories', icon: TagIcon },
   { name: 'Cards', href: '/cards', icon: PhotoIcon },
+  { name: 'Colors', href: '/colors', icon: SwatchIcon },
   { name: 'Users', href: '/users', icon: UsersIcon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];

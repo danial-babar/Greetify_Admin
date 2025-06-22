@@ -136,10 +136,6 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
         const posY = typeof el.positionY === 'number' ? Math.round(el.positionY) : 0;
         const scale = el.scale || 1;
         
-        // Calculate approximate text dimensions to help mobile positioning
-        const textWidth = (el.text?.length || 1) * scale * 8;
-        const textHeight = scale * 20;
-        
         return {
           ...el,
           // Ensure the type is text and all values are in the correct format
@@ -152,16 +148,8 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
           bold: !!el.bold,
           italic: !!el.italic,
           alignment: el.alignment || 'center',
-          // Use consistent position values for all position-related properties
           positionX: posX,
           positionY: posY,
-          translateX: posX,
-          translateY: posY,
-          centerX: posX,
-          centerY: posY,
-          // Include text dimensions to help mobile rendering position correctly
-          width: textWidth,
-          height: textHeight
         };
       });
       
