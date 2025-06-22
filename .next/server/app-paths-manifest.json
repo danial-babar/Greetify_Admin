@@ -1,7 +1,0 @@
-{
-  "/categories/page": "app/categories/page.js",
-  "/colors/edit/[id]/page": "app/colors/edit/[id]/page.js",
-  "/colors/page": "app/colors/page.js",
-  "/cards/page": "app/cards/page.js",
-  "/cards/edit/[id]/page": "app/cards/edit/[id]/page.js"
-}

@@ -15,20 +15,19 @@ import { colorAPI, Color } from "@/services/api";
 // Match mobile app data structure exactly
 interface CardElement {
   id: string;
-  type: "text" | "sticker";
-  text?: string;
-  color?: string;
-  fontStyleIndex?: number;
-  bold?: boolean;
-  italic?: boolean;
-  alignment?: "left" | "center" | "right";
-  lineHeight?: number;
-  fontSize?: number;
-  src?: string; // image URL or base64
+  type: "text";
+  text: string;
   positionX: number;
   positionY: number;
+  color: string;
+  fontStyleIndex: number;
+  bold: boolean;
+  italic?: boolean;
   scale: number;
   rotate: number;
+  alignment: "left" | "center" | "right";
+  lineHeight: number;
+  fontSize: number;
 }
 
 interface CardData {
@@ -112,8 +111,6 @@ export default function CardEditor({
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   const [colorsList, setColorsList] = useState<string[]>([]);
-
-  const stickerInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -316,26 +313,6 @@ export default function CardEditor({
 
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
   console.log("cardData", cardData);
-
-  const addSticker = (src: string) => {
-    const newElement: CardElement = {
-      id: Date.now().toString(),
-      type: "sticker",
-      src,
-      positionX: 0,
-      positionY: 0,
-      scale: 1,
-      rotate: 0,
-    };
-    const newCardData = {
-      ...cardData,
-      elements: [...cardData.elements, newElement],
-    };
-    setCardData(newCardData);
-    addToHistory(newCardData);
-    setSelectedElement(newElement.id);
-  };
-
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between mb-4">
@@ -362,13 +339,6 @@ export default function CardEditor({
           >
             <PlusIcon className="h-4 w-4 mr-1" />
             Add Text
-          </button>
-          <button
-            className="px-3 py-1 bg-primary-100 text-primary-800 rounded flex items-center text-sm"
-            onClick={() => stickerInputRef.current?.click()}
-          >
-            <PlusIcon className="h-4 w-4 mr-1" />
-            Add Sticker
           </button>
         </div>
         <button
@@ -414,99 +384,62 @@ export default function CardEditor({
               </p>
             </div>
           </div>
-          {cardData.elements.map((element) =>
-            element.type === "text" ? (
-              <Draggable
-                key={element.id}
-                defaultPosition={{
-                  x: (element.positionX / 100) * containerSize.width,
-                  y: (element.positionY / 100) * containerSize.height,
-                }}
-                onStop={(e, data) => handleDragStop(element.id, e, data)}
-                bounds="parent"
+          {cardData.elements.map((element) => (
+            <Draggable
+              key={element.id}
+              defaultPosition={{
+                x: (element.positionX / 100) * containerSize.width,
+                y: (element.positionY / 100) * containerSize.height,
+              }}
+              onStop={(e, data) => handleDragStop(element.id, e, data)}
+              bounds="parent"
+            >
+              <div
+                className={`absolute cursor-move ${
+                  selectedElement === element.id
+                    ? "ring-2 ring-primary-500"
+                    : ""
+                }`}
+                onClick={() => setSelectedElement(element.id)}
               >
                 <div
-                  className={`absolute cursor-move ${
-                    selectedElement === element.id
-                      ? "ring-2 ring-primary-500"
-                      : ""
-                  }`}
-                  onClick={() => setSelectedElement(element.id)}
-                >
-                  <div
-                    style={{
-                      fontFamily:
-                        element.bold && EDITOR_FONTS[element.fontStyleIndex]?.bold
-                          ? EDITOR_FONTS[element.fontStyleIndex].bold!
-                          : EDITOR_FONTS[element.fontStyleIndex]?.value ||
-                            "Arial",
-                      fontSize: `${
-                        (element.fontSize / 100) * containerSize.width
-                      }px`,
-                      color: element.color,
-                      textAlign: element.alignment,
-                      padding: "5px",
-                      minWidth: "50px",
-                      lineHeight: element.lineHeight,
-                      transform: `rotate(${element.rotate}rad)`,
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {element.text}
-                  </div>
-
-                  {selectedElement === element.id && (
-                    <button
-                      className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeElement(element.id);
-                      }}
-                    >
-                      <TrashIcon className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              </Draggable>
-            ) : (
-              <Draggable
-                key={element.id}
-                defaultPosition={{
-                  x: (element.positionX / 100) * containerSize.width,
-                  y: (element.positionY / 100) * containerSize.height,
-                }}
-                onStop={(e, data) => handleDragStop(element.id, e, data)}
-                bounds="parent"
-              >
-                <div
-                  className={`absolute cursor-move ${
-                    selectedElement === element.id ? "ring-2 ring-primary-500" : ""
-                  }`}
-                  onClick={() => setSelectedElement(element.id)}
                   style={{
-                    transform: `scale(${element.scale}) rotate(${element.rotate}rad)`,
+                    fontFamily:
+                      element.bold && EDITOR_FONTS[element.fontStyleIndex]?.bold
+                        ? EDITOR_FONTS[element.fontStyleIndex].bold!
+                        : EDITOR_FONTS[element.fontStyleIndex]?.value ||
+                          "Arial",
+                    fontSize: `${
+                      (element.fontSize / 100) * containerSize.width
+                    }px`,
+                    color: element.color,
+                    // fontWeight: element.bold && !EDITOR_FONTS[element.fontStyleIndex]?.bold ? 'bold' : 'normal',
+                    // fontStyle: element.italic ? 'italic' : 'normal',
+                    textAlign: element.alignment,
+                    padding: "5px",
+                    minWidth: "50px",
+                    lineHeight: element.lineHeight,
+                    transform: `rotate(${element.rotate}rad)`,
+                    whiteSpace: "pre-wrap",
                   }}
                 >
-                  <img
-                    src={element.src}
-                    alt="Sticker"
-                    style={{ maxWidth: 120, maxHeight: 120 }}
-                  />
-                  {selectedElement === element.id && (
-                    <button
-                      className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeElement(element.id);
-                      }}
-                    >
-                      <TrashIcon className="h-3 w-3" />
-                    </button>
-                  )}
+                  {element.text}
                 </div>
-              </Draggable>
-            )
-          )}
+
+                {selectedElement === element.id && (
+                  <button
+                    className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeElement(element.id);
+                    }}
+                  >
+                    <TrashIcon className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </Draggable>
+          ))}
         </div>
 
         <div className="w-80 border-l border-gray-200 p-4 overflow-y-auto">
@@ -680,6 +613,12 @@ export default function CardEditor({
                   >
                     B
                   </button>
+                  {/* <button
+                    className={`px-3 py-1 border ${selectedElementData.italic ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md italic`}
+                    onClick={() => updateElement(selectedElementData.id, { italic: !selectedElementData.italic })}
+                  >
+                    I
+                  </button> */}
                 </div>
               </div>
 
@@ -761,6 +700,7 @@ export default function CardEditor({
                   Color
                 </label>
                 <div className="grid grid-cols-4 gap-2 mt-2">
+                  {/* Multiple color icon at first index */}
                   <div className="relative">
                     <button
                       type="button"
@@ -794,6 +734,7 @@ export default function CardEditor({
                     )}
                   </div>
                   
+                  {/* Regular color palette */}
                   {colorsList.map((color, index) => (
                     <button
                       key={index}
@@ -857,23 +798,6 @@ export default function CardEditor({
           )}
         </div>
       </div>
-
-      <input
-        type="file"
-        accept="image/*"
-        ref={stickerInputRef}
-        style={{ display: "none" }}
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              if (ev.target?.result) addSticker(ev.target.result as string);
-            };
-            reader.readAsDataURL(file);
-          }
-        }}
-      />
     </div>
   );
 }
