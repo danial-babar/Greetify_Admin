@@ -11,6 +11,8 @@ import {
   SwatchIcon,
 } from "@heroicons/react/24/outline";
 import { colorAPI, Color } from "@/services/api";
+// @ts-ignore
+import html2canvas from "html2canvas";
 
 // Match mobile app data structure exactly
 interface CardElement {
@@ -35,8 +37,8 @@ interface CardData {
   name: string;
   category_id: string;
   sub_category_id: string;
-  background_image?: string;
-  preview_image?: string;
+  background_image?: string | Blob;
+  preview_image?: string | File;
   elements: CardElement[];
 }
 
@@ -58,8 +60,9 @@ const EDITOR_FONTS = [
 ];
 
 // Card dimensions (matching mobile app constants)
+const ASPECT_RATIO = 4 / 3;
 const CARD_WIDTH = 450;
-const CARD_HEIGHT = CARD_WIDTH * (4 / 3);
+const CARD_HEIGHT = CARD_WIDTH * ASPECT_RATIO;
 
 // Convert values from editor (pixels) to backend values (percentages)
 const convertToBackendValues = (elements: CardElement[]) => {
@@ -106,20 +109,21 @@ export default function CardEditor({
   const [containerSize, setContainerSize] = useState({
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
+    aspectRatio: ASPECT_RATIO,
   });
 
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   const [colorsList, setColorsList] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (containerRef.current) {
-      setContainerSize({
-        width: containerRef.current.offsetWidth,
-        height: containerRef.current.offsetHeight,
-      });
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (containerRef.current) {
+  //     setContainerSize({
+  //       width: containerRef.current.offsetWidth,
+  //       height: containerRef.current.offsetHeight,
+  //     });
+  //   }
+  // }, []);
 
   useEffect(() => {
     // Add initial card state to history if it exists
@@ -291,16 +295,62 @@ export default function CardEditor({
     };
   }, []); // Empty dependency array means this runs once on mount
 
-  // Save card data
-  const handleSave = () => {
-    if (!containerRef.current) return;
+  // When cardData.background_image changes (for edit mode), update height if it's an image URL
+  useEffect(() => {
+    if (
+      cardData.background_image &&
+      typeof cardData.background_image === "string"
+    ) {
+      const img = new window.Image();
+      img.onload = () => {
+        const aspect = img.height / img.width;
+        setContainerSize({
+          width: CARD_WIDTH,
+          height: Math.round(CARD_WIDTH * aspect),
+          aspectRatio: aspect,
+        });
+      };
+      img.src = cardData.background_image;
+    }
+  }, [cardData.background_image]);
 
+  // Save card data
+  const handleSave = async () => {
+    if (!containerRef.current) return;
+    setSelectedElement(null);
     const elementsForBackend = convertToBackendValues(cardData.elements);
+
+    let previewImage: File | undefined = undefined;
+    const dropzone = containerRef.current.querySelector(
+      "[data-dropzone]"
+    ) as HTMLElement;
+    let prevDropzoneDisplay = "";
+    if (dropzone) {
+      prevDropzoneDisplay = dropzone.style.display;
+      dropzone.style.display = "none";
+    }
+    await new Promise((r) => setTimeout(r, 50));
+    const canvas = await html2canvas(containerRef.current, {
+      backgroundColor: null,
+      useCORS: true,
+      scale: 2,
+    });
+    if (dropzone) dropzone.style.display = prevDropzoneDisplay;
+    previewImage = await new Promise<File | undefined>((resolve) => {
+      canvas.toBlob((blob: Blob | null) => {
+        if (!blob) return resolve(undefined);
+        const file = new File([blob], "preview.png", { type: "image/png" });
+        console.log("file", file);
+        resolve(file);
+      }, "image/png");
+    });
 
     onSave({
       ...cardData,
       elements: elementsForBackend,
       background_image: backgroundImage || undefined,
+      preview_image: previewImage || undefined,
+      aspect_ratio:containerSize.aspectRatio
     });
   };
 
@@ -312,7 +362,7 @@ export default function CardEditor({
   const selectedElementData = getSelectedElementData();
 
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
-  console.log("cardData", cardData);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between mb-4">
@@ -353,7 +403,7 @@ export default function CardEditor({
       <div className="flex flex-grow">
         <div
           ref={containerRef}
-          className="border border-gray-300 rounded-lg relative overflow-hidden flex items-center justify-center"
+          className="relative overflow-hidden flex items-center justify-center"
           style={{
             backgroundImage: backgroundImage
               ? `url(${URL.createObjectURL(backgroundImage)})`
@@ -362,16 +412,18 @@ export default function CardEditor({
               : "none",
             backgroundSize: "cover",
             backgroundPosition: "center",
-            backgroundRepeat:'no-repeat',
-            width: CARD_WIDTH,
-            height: CARD_HEIGHT,
+            backgroundRepeat: "no-repeat",
+            width: containerSize.width,
+            height: containerSize.height,
           }}
         >
           <div
             {...getRootProps()}
+            data-dropzone
             className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 cursor-pointer"
             style={{
               opacity: backgroundImage || cardData.background_image ? 0 : 1,
+              borderStyle: "none",
             }}
           >
             <input {...getInputProps()} />
@@ -442,7 +494,7 @@ export default function CardEditor({
           ))}
         </div>
 
-        <div className="w-80 border-l border-gray-200 p-4 overflow-y-auto">
+        <div className="w-80 border-gray-200 p-4 overflow-y-auto">
           {selectedElementData ? (
             <div className="space-y-4">
               <div>
@@ -711,7 +763,8 @@ export default function CardEditor({
                           : ""
                       }`}
                       style={{
-                        background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+                        background:
+                          "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)",
                       }}
                       title="Custom color"
                     ></button>
@@ -719,7 +772,9 @@ export default function CardEditor({
                       <div className="absolute z-50 mt-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg left-10">
                         <HexAlphaColorPicker
                           color={selectedElementData.color}
-                          onChange={(color) => updateElement(selectedElementData.id, { color })}
+                          onChange={(color) =>
+                            updateElement(selectedElementData.id, { color })
+                          }
                         />
                         <div className="flex justify-end mt-2">
                           <button
@@ -733,7 +788,7 @@ export default function CardEditor({
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Regular color palette */}
                   {colorsList.map((color, index) => (
                     <button

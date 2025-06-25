@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
-import Link from 'next/link';
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { Card, cardAPI } from '@/services/api';
-import { toast } from 'react-hot-toast';
+import { useState, useEffect } from "react";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
+import Link from "next/link";
+import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { Card, cardAPI } from "@/services/api";
+import { toast } from "react-hot-toast";
 
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
-  
+
   // Fetch cards from API
   useEffect(() => {
     const fetchCards = async () => {
@@ -29,7 +29,7 @@ export default function CardsPage() {
           console.error("Unexpected cards data format:", cardsData);
           setCards([]);
         }
-        
+
         setLoading(false);
       } catch (error) {
         console.error("Error fetching cards:", error);
@@ -37,17 +37,17 @@ export default function CardsPage() {
         setLoading(false);
       }
     };
-    
+
     fetchCards();
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this card?')) {
+    if (window.confirm("Are you sure you want to delete this card?")) {
       try {
         setDeleting(id);
         await cardAPI.delete(id);
-        setCards(cards.filter(card => card.id !== id));
-        toast.success('Card deleted successfully');
+        setCards(cards.filter((card) => card.id !== id));
+        toast.success("Card deleted successfully");
         setDeleting(null);
       } catch (error) {
         console.error("Error deleting card:", error);
@@ -63,7 +63,8 @@ export default function CardsPage() {
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Cards</h1>
           <p className="mt-2 text-sm text-gray-700">
-            A list of all greeting cards including their name, category, and preview.
+            A list of all greeting cards including their name, category, and
+            preview.
           </p>
         </div>
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -83,7 +84,9 @@ export default function CardsPage() {
         </div>
       ) : cards.length === 0 ? (
         <div className="mt-6 text-center">
-          <p className="text-gray-500">No cards found. Create your first card!</p>
+          <p className="text-gray-500">
+            No cards found. Create your first card!
+          </p>
         </div>
       ) : (
         <div className="mt-8 flex flex-col">
@@ -93,19 +96,34 @@ export default function CardsPage() {
                 <table className="min-w-full divide-y divide-gray-300">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                      <th
+                        scope="col"
+                        className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+                      >
                         Name
                       </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
                         Preview
                       </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
                         Created
                       </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
                         Last Modified
                       </th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                      <th
+                        scope="col"
+                        className="relative py-3.5 pl-3 pr-4 sm:pr-6"
+                      >
                         <span className="sr-only">Actions</span>
                       </th>
                     </tr>
@@ -117,31 +135,45 @@ export default function CardsPage() {
                           {card.name}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          <div className="h-16 w-16 bg-gray-100 rounded overflow-hidden relative">
+                          <a
+                            className="w-16 bg-gray-100 rounded overflow-hidden relative"
+                            target="black"
+                            href={card.preview_image}
+                          >
                             {card.preview_image ? (
-                              <img 
-                                src={card.preview_image} 
-                                alt={card.name} 
-                                className="h-full w-full object-cover" 
+                              <img
+                                src={card.preview_image}
+                                alt={card.name}
+                                style={{
+                                  width: 180,
+                                  height: 180 * card.aspect_ratio!,
+                                }}
+                                className=""
                               />
                             ) : card.background_image ? (
-                              <img 
-                                src={card.background_image} 
-                                alt={card.name} 
-                                className="h-full w-full object-cover" 
+                              <img
+                                src={card.background_image}
+                                alt={card.name}
+                                className="h-full w-full object-cover"
                               />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center bg-gray-200">
-                                <span className="text-xs text-gray-500">No image</span>
+                                <span className="text-xs text-gray-500">
+                                  No image
+                                </span>
                               </div>
                             )}
-                          </div>
+                          </a>
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {card.createdAt ? new Date(card.createdAt).toLocaleDateString() : 'N/A'}
+                          {card.createdAt
+                            ? new Date(card.createdAt).toLocaleDateString()
+                            : "N/A"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {card.updatedAt ? new Date(card.updatedAt).toLocaleDateString() : 'N/A'}
+                          {card.updatedAt
+                            ? new Date(card.updatedAt).toLocaleDateString()
+                            : "N/A"}
                         </td>
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                           <div className="flex space-x-3 justify-end">
@@ -149,7 +181,10 @@ export default function CardsPage() {
                               href={`/cards/edit/${card.id}`}
                               className="text-primary-600 hover:text-primary-900"
                             >
-                              <PencilIcon className="h-5 w-5" aria-hidden="true" />
+                              <PencilIcon
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                              />
                               <span className="sr-only">Edit</span>
                             </Link>
                             <button
@@ -157,7 +192,10 @@ export default function CardsPage() {
                               onClick={() => handleDelete(card.id as string)}
                               disabled={deleting === card.id}
                             >
-                              <TrashIcon className="h-5 w-5" aria-hidden="true" />
+                              <TrashIcon
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                              />
                               <span className="sr-only">Delete</span>
                             </button>
                           </div>
@@ -173,4 +211,4 @@ export default function CardsPage() {
       )}
     </DashboardLayout>
   );
-} 
+}

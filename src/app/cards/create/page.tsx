@@ -26,7 +26,7 @@ export default function CreateCardPage() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [previewImage, setPreviewImage] = useState<File | null>(null);
+  // const [previewImage, setPreviewImage] = useState<File | null>(null);
 
   // Fetch categories from API
   useEffect(() => {
@@ -108,10 +108,10 @@ export default function CreateCardPage() {
     }
   }, [selectedCategoryId]);
 
-  const handlePreviewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setPreviewImage(file);
-  };
+  // const handlePreviewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) setPreviewImage(file);
+  // };
 
   const handleCardSave = async (cardData: Card) => {
     if (!cardName.trim()) {
@@ -171,14 +171,14 @@ export default function CreateCardPage() {
       // Handle background image upload
       if (cardData.background_image) {
         formData.append("background_image", cardData.background_image);
+        formData.append("aspect_ratio", cardData.aspect_ratio);
       }
 
       // Handle preview image upload
-      if (previewImage) {
-        formData.append("preview_image", previewImage);
+      if (cardData.preview_image) {
+        formData.append("preview_image", cardData.preview_image);
       }
 
-      console.log("Saving card with form data:", formData);
 
       // Save the card
       const response = await cardAPI.create(formData);
@@ -280,7 +280,7 @@ export default function CreateCardPage() {
                 </div>
               </div>
 
-              <div className="sm:col-span-3">
+              {/* <div className="sm:col-span-3">
                 <label
                   htmlFor="preview-image"
                   className="block text-sm font-medium text-gray-700"
@@ -306,7 +306,7 @@ export default function CreateCardPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 
