@@ -346,7 +346,7 @@ export default function CardEditor({
           resolve(file);
         },
         "image/png",
-        0.7
+        0.3
       );
     });
 
