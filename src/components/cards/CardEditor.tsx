@@ -334,16 +334,20 @@ export default function CardEditor({
     const canvas = await html2canvas(containerRef.current, {
       backgroundColor: null,
       useCORS: true,
-      scale: 2,
+      scale: 1,
     });
     if (dropzone) dropzone.style.display = prevDropzoneDisplay;
     previewImage = await new Promise<File | undefined>((resolve) => {
-      canvas.toBlob((blob: Blob | null) => {
-        if (!blob) return resolve(undefined);
-        const file = new File([blob], "preview.png", { type: "image/png" });
-        console.log("file", file);
-        resolve(file);
-      }, "image/png");
+      canvas.toBlob(
+        (blob: Blob | null) => {
+          if (!blob) return resolve(undefined);
+          const file = new File([blob], "preview.png", { type: "image/png" });
+          console.log("file", file);
+          resolve(file);
+        },
+        "image/png",
+        0.7
+      );
     });
 
     onSave({
@@ -351,7 +355,7 @@ export default function CardEditor({
       elements: elementsForBackend,
       background_image: backgroundImage || undefined,
       preview_image: previewImage || undefined,
-      aspect_ratio:containerSize.aspectRatio
+      aspect_ratio: containerSize.aspectRatio,
     });
   };
 
@@ -781,13 +785,19 @@ export default function CardEditor({
                           type="text"
                           className="mt-2 w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                           value={selectedElementData.color}
-                          onChange={e => {
+                          onChange={(e) => {
                             const val = e.target.value;
                             // Accept hex with or without #, and with alpha
-                            if (/^#?[0-9A-Fa-f]{6,8}$/.test(val.replace('#',''))) {
-                              updateElement(selectedElementData.id, { color: val.startsWith('#') ? val : `#${val}` });
+                            if (
+                              /^#?[0-9A-Fa-f]{6,8}$/.test(val.replace("#", ""))
+                            ) {
+                              updateElement(selectedElementData.id, {
+                                color: val.startsWith("#") ? val : `#${val}`,
+                              });
                             } else {
-                              updateElement(selectedElementData.id, { color: val });
+                              updateElement(selectedElementData.id, {
+                                color: val,
+                              });
                             }
                           }}
                           placeholder="#RRGGBB or #RRGGBBAA"
