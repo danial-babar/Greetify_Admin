@@ -334,7 +334,7 @@ export default function CardEditor({
     const canvas = await html2canvas(containerRef.current, {
       backgroundColor: null,
       useCORS: true,
-      scale: 1,
+      scale: 0.5,
     });
     if (dropzone) dropzone.style.display = prevDropzoneDisplay;
     previewImage = await new Promise<File | undefined>((resolve) => {
