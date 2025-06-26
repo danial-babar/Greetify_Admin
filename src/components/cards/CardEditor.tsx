@@ -40,6 +40,7 @@ interface CardData {
   background_image?: string | Blob;
   preview_image?: string | File;
   elements: CardElement[];
+  aspect_ratio?: number;
 }
 
 // Match mobile app fonts
@@ -775,6 +776,22 @@ export default function CardEditor({
                           onChange={(color) =>
                             updateElement(selectedElementData.id, { color })
                           }
+                        />
+                        <input
+                          type="text"
+                          className="mt-2 w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                          value={selectedElementData.color}
+                          onChange={e => {
+                            const val = e.target.value;
+                            // Accept hex with or without #, and with alpha
+                            if (/^#?[0-9A-Fa-f]{6,8}$/.test(val.replace('#',''))) {
+                              updateElement(selectedElementData.id, { color: val.startsWith('#') ? val : `#${val}` });
+                            } else {
+                              updateElement(selectedElementData.id, { color: val });
+                            }
+                          }}
+                          placeholder="#RRGGBB or #RRGGBBAA"
+                          maxLength={9}
                         />
                         <div className="flex justify-end mt-2">
                           <button

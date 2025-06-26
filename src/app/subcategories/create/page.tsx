@@ -5,14 +5,16 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Category, subCategoryAPI, categoryAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
+import { HexAlphaColorPicker } from 'react-colorful';
 
 export default function CreateSubCategoryPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [background_color, setBackgroundColor] = useState('#000000');
+  const [background_color, setBackgroundColor] = useState('#000000FF');
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -111,21 +113,39 @@ export default function CreateSubCategoryPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Background Color
               </label>
-              <div className="mt-1 flex items-center space-x-2">
-                <input
-                  type="color"
-                  id="backgroundColor"
-                  value={background_color}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="h-8 w-8 rounded border border-gray-300"
+              <div className="relative mt-1 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowColorPicker(true)}
+                  className="mr-2 h-8 w-8 rounded border border-gray-300"
+                  style={{ backgroundColor: background_color }}
+                  aria-label="Pick a color"
                 />
                 <input
                   type="text"
                   value={background_color}
                   onChange={(e) => setBackgroundColor(e.target.value)}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  placeholder="#000000"
+                  placeholder="#RRGGBBAA"
+                  maxLength={9}
                 />
+                {showColorPicker && (
+                  <div className="absolute z-10 top-full left-0 mt-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg">
+                    <HexAlphaColorPicker
+                      color={background_color}
+                      onChange={setBackgroundColor}
+                    />
+                    <div className="flex justify-end mt-2">
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                        onClick={() => setShowColorPicker(false)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="mt-2 h-8 w-full rounded" style={{ backgroundColor: background_color }} />
             </div>
