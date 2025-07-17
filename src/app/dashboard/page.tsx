@@ -20,8 +20,6 @@ export default function Dashboard() {
         const cardsData = await cardAPI.getAll();
         if (Array.isArray(cardsData)) {
           setCardsCount(cardsData.length);
-        } else if (cardsData && Array.isArray(cardsData.data)) {
-          setCardsCount(cardsData.data.length);
         }
         
         // Fetch categories

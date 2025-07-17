@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
-import CardEditor from "@/components/cards/CardEditor";
+import CardEditor, { UpdatedCardData } from "@/components/cards/CardEditor";
 import {
   Category,
   SubCategory,
@@ -26,7 +26,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   // const [previewImage, setPreviewImage] = useState<File | null>(null);
-  const [cardData, setCardData] = useState<Card | null>(null);
+  const [cardData, setCardData] = useState<Card>();
 
   useEffect(() => {
     fetchData();
@@ -123,7 +123,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
   //   if (file) setPreviewImage(file);
   // };
 
-  const handleCardSave = async (updatedCardData: Card) => {
+  const handleCardSave = async (updatedCardData: UpdatedCardData) => {
     if (!cardName.trim()) {
       toast.error("Please enter a card name");
       return;
@@ -179,7 +179,10 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
       // Handle background image upload
       if (updatedCardData.background_image) {
         formData.append("background_image", updatedCardData.background_image);
-        formData.append("aspect_ratio", updatedCardData.aspect_ratio);
+        formData.append(
+          "aspect_ratio",
+          updatedCardData.aspect_ratio?.toString() || ""
+        );
       }
 
       // Handle preview image upload
@@ -249,7 +252,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
                   >
                     <option value="">Select a category</option>
                     {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
+                      <option key={category._id} value={category._id}>
                         {category.name}
                       </option>
                     ))}
@@ -275,7 +278,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
                   >
                     <option value="">Select a subcategory</option>
                     {filteredSubCategories.map((subCategory) => (
-                      <option key={subCategory.id} value={subCategory.id}>
+                      <option key={subCategory._id} value={subCategory._id}>
                         {subCategory.name}
                       </option>
                     ))}

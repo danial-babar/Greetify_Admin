@@ -25,7 +25,7 @@ export default function ColorsPage() {
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this color?")) {
       await colorAPI.delete(id);
-      setColors((prev) => prev.filter((c) => c.id !== id));
+      setColors((prev) => prev.filter((c) => c._id !== id));
     }
   };
 
@@ -50,14 +50,14 @@ export default function ColorsPage() {
             </thead>
             <tbody>
               {colors.map((color) => (
-                <tr key={color.id} className="border-t">
+                <tr key={color._id} className="border-t">
                   <td className="p-2">
                     <span className="inline-block w-8 h-8 rounded-full border border-gray-300" style={{ backgroundColor: color.color }} />
                     <span className="ml-2 text-xs">{color.color}</span>
                   </td>
                   <td className="p-2 flex gap-2">
-                    <Link href={`/colors/edit/${color.id}`} className="px-2 py-1 bg-blue-500 text-white rounded">Edit</Link>
-                    <button onClick={() => handleDelete(color.id)} className="px-2 py-1 bg-red-500 text-white rounded">Delete</button>
+                    <Link href={`/colors/edit/${color._id}`} className="px-2 py-1 bg-blue-500 text-white rounded">Edit</Link>
+                    <button onClick={() => handleDelete(color._id)} className="px-2 py-1 bg-red-500 text-white rounded">Delete</button>
                   </td>
                 </tr>
               ))}

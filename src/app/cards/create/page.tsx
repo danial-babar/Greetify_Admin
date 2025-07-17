@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
-import CardEditor from "@/components/cards/CardEditor";
+import CardEditor, { UpdatedCardData } from "@/components/cards/CardEditor";
 import {
   Category,
   SubCategory,
@@ -20,7 +20,6 @@ export default function CreateCardPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedSubCategoryId, setSelectedSubCategoryId] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [filteredSubCategories, setFilteredSubCategories] = useState<
     SubCategory[]
   >([]);
@@ -113,7 +112,7 @@ export default function CreateCardPage() {
   //   if (file) setPreviewImage(file);
   // };
 
-  const handleCardSave = async (cardData: Card) => {
+  const handleCardSave = async (cardData: UpdatedCardData) => {
     if (!cardName.trim()) {
       toast.error("Please enter a card name");
       return;
@@ -134,7 +133,7 @@ export default function CreateCardPage() {
       const formData = new FormData();
       formData.append("name", cardName);
       formData.append("category_id", selectedCategoryId);
-      formData.append("sub_category_id", selectedSubCategoryId);
+      formData.append("subcategory_id", selectedSubCategoryId);
 
       // Make sure each element has all required properties for the mobile app
       const processedElements = cardData.elements.map((el) => {
@@ -171,7 +170,7 @@ export default function CreateCardPage() {
       // Handle background image upload
       if (cardData.background_image) {
         formData.append("background_image", cardData.background_image);
-        formData.append("aspect_ratio", cardData.aspect_ratio);
+        formData.append("aspect_ratio", cardData.aspect_ratio?.toString() || '');
       }
 
       // Handle preview image upload
@@ -246,7 +245,7 @@ export default function CreateCardPage() {
                   >
                     <option value="">Select a category</option>
                     {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
+                      <option key={category._id} value={category._id}>
                         {category.name}
                       </option>
                     ))}
@@ -272,7 +271,7 @@ export default function CreateCardPage() {
                   >
                     <option value="">Select a subcategory</option>
                     {filteredSubCategories.map((subCategory) => (
-                      <option key={subCategory.id} value={subCategory.id}>
+                      <option key={subCategory._id} value={subCategory._id}>
                         {subCategory.name}
                       </option>
                     ))}

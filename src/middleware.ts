@@ -13,7 +13,7 @@ export function middleware(request: NextRequest) {
       const userData = user ? JSON.parse(user) : null;
 
       // Check if user has admin role
-      if (!userData?.isAdmin) {
+      if (userData?.role != 'admin') {
         // Redirect to login if not admin
         return NextResponse.redirect(new URL('/', request.url));
       }

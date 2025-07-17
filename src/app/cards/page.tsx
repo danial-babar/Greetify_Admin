@@ -18,13 +18,9 @@ export default function CardsPage() {
       try {
         setLoading(true);
         let cardsData = await cardAPI.getAll();
-        console.log("Cards data:", cardsData);
-        cardsData = cardsData.data;
         // Handle different response formats
         if (Array.isArray(cardsData)) {
           setCards(cardsData);
-        } else if (cardsData && Array.isArray(cardsData.data)) {
-          setCards(cardsData.data);
         } else {
           console.error("Unexpected cards data format:", cardsData);
           setCards([]);
@@ -46,7 +42,7 @@ export default function CardsPage() {
       try {
         setDeleting(id);
         await cardAPI.delete(id);
-        setCards(cards.filter((card) => card.id !== id));
+        setCards(cards.filter((card) => card._id !== id));
         toast.success("Card deleted successfully");
         setDeleting(null);
       } catch (error) {
@@ -130,7 +126,7 @@ export default function CardsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {cards.map((card) => (
-                      <tr key={card.id}>
+                      <tr key={card._id}>
                         <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                           {card.name}
                         </td>
@@ -178,7 +174,7 @@ export default function CardsPage() {
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                           <div className="flex space-x-3 justify-end">
                             <Link
-                              href={`/cards/edit/${card.id}`}
+                              href={`/cards/edit/${card._id}`}
                               className="text-primary-600 hover:text-primary-900"
                             >
                               <PencilIcon
@@ -189,8 +185,8 @@ export default function CardsPage() {
                             </Link>
                             <button
                               className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                              onClick={() => handleDelete(card.id as string)}
-                              disabled={deleting === card.id}
+                              onClick={() => handleDelete(card._id as string)}
+                              disabled={deleting === card._id}
                             >
                               <TrashIcon
                                 className="h-5 w-5"

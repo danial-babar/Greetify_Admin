@@ -99,7 +99,7 @@ export default function CategoriesPage() {
                       </tr>
                     ) : (
                       categories.map((category) => (
-                        <tr key={category.id}>
+                        <tr key={category._id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                             {category.name}
                           </td>
@@ -129,13 +129,13 @@ export default function CategoriesPage() {
                           </td>
                           <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                             <button
-                              onClick={() => router.push(`/categories/edit/${category.id}`)}
+                              onClick={() => router.push(`/categories/edit/${category._id}`)}
                               className="text-primary-600 hover:text-primary-900 mr-4"
                             >
                               Edit
                             </button>
                             <button
-                              onClick={() => handleDelete(category.id)}
+                              onClick={() => handleDelete(category._id)}
                               className="text-red-600 hover:text-red-900"
                             >
                               Delete

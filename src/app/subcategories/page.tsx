@@ -52,7 +52,7 @@ export default function SubCategoriesPage() {
   };
 
   const getCategoryName = (categoryId: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
+    const category = categories.find(cat => cat._id === categoryId);
     return category ? category.name : 'Unknown Category';
   };
 
@@ -112,7 +112,7 @@ export default function SubCategoriesPage() {
                       </tr>
                     ) : (
                       subCategories.map((subCategory) => (
-                        <tr key={subCategory.id}>
+                        <tr key={subCategory._id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                             {subCategory.name}
                           </td>
@@ -132,13 +132,13 @@ export default function SubCategoriesPage() {
                           </td>
                           <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                             <button
-                              onClick={() => router.push(`/subcategories/edit/${subCategory.id}`)}
+                              onClick={() => router.push(`/subcategories/edit/${subCategory._id}`)}
                               className="text-primary-600 hover:text-primary-900 mr-4"
                             >
                               Edit
                             </button>
                             <button
-                              onClick={() => handleDelete(subCategory.id)}
+                              onClick={() => handleDelete(subCategory._id)}
                               className="text-red-600 hover:text-red-900"
                             >
                               Delete

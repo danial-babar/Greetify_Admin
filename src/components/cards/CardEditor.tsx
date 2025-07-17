@@ -10,37 +10,13 @@ import {
   CheckIcon,
   SwatchIcon,
 } from "@heroicons/react/24/outline";
-import { colorAPI, Color } from "@/services/api";
+import { colorAPI, Color, CardElement, Card } from "@/services/api";
 // @ts-ignore
 import html2canvas from "html2canvas";
 
-// Match mobile app data structure exactly
-interface CardElement {
-  id: string;
-  type: "text";
-  text: string;
-  positionX: number;
-  positionY: number;
-  color: string;
-  fontStyleIndex: number;
-  bold: boolean;
-  italic?: boolean;
-  scale: number;
-  rotate: number;
-  alignment: "left" | "center" | "right";
-  lineHeight: number;
-  fontSize: number;
-}
-
-interface CardData {
-  id?: string;
-  name: string;
-  category_id: string;
-  sub_category_id: string;
-  background_image?: string | Blob;
-  preview_image?: string | File;
-  elements: CardElement[];
-  aspect_ratio?: number;
+export type UpdatedCardData = Omit<Card, "background_image" | "preview_image"> & {
+  background_image?: File;
+  preview_image?: File;
 }
 
 // Match mobile app fonts
@@ -88,10 +64,10 @@ export default function CardEditor({
   initialData,
   onSave,
 }: {
-  initialData?: CardData;
-  onSave: (cardData: CardData) => Promise<void>;
+  initialData?: Card;
+  onSave: (cardData: UpdatedCardData) => Promise<void>;
 }) {
-  const [cardData, setCardData] = useState<CardData>(
+  const [cardData, setCardData] = useState<Card>(
     initialData || {
       name: "New Card",
       category_id: "",
@@ -101,9 +77,9 @@ export default function CardEditor({
   );
 
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
-  const [history, setHistory] = useState<CardData[]>([]);
+  const [history, setHistory] = useState<Card[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [backgroundImage, setBackgroundImage] = useState<Blob>();
+  const [backgroundImage, setBackgroundImage] = useState<File>();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
@@ -147,7 +123,7 @@ export default function CardEditor({
   }, []);
 
   // History management
-  const addToHistory = (newCardData: CardData) => {
+  const addToHistory = (newCardData: Card) => {
     const newHistory = [...history.slice(0, historyIndex + 1), newCardData];
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
@@ -295,6 +271,23 @@ export default function CardEditor({
       document.head.removeChild(styleElement);
     };
   }, []); // Empty dependency array means this runs once on mount
+
+  useEffect(() => {
+    if (backgroundImage) {
+      const img = new window.Image();
+      img.onload = () => {
+        const aspect = img.height / img.width;
+        setContainerSize({
+          width: CARD_WIDTH,
+          height: Math.round(CARD_WIDTH * aspect),
+          aspectRatio: aspect,
+        });
+      };
+      img.src = URL.createObjectURL(backgroundImage);
+      // Clean up the object URL after image loads
+      return () => URL.revokeObjectURL(img.src);
+    }
+  }, [backgroundImage]);
 
   // When cardData.background_image changes (for edit mode), update height if it's an image URL
   useEffect(() => {

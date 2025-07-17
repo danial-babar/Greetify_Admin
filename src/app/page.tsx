@@ -1,28 +1,30 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { authAPI } from '@/services/api';
-import Cookies from 'js-cookie';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { authAPI } from "@/services/api";
+import Cookies from "js-cookie";
 
 export default function Home() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
+    setError("");
     try {
       const data = await authAPI.login(email, password);
-      Cookies.set('user', JSON.stringify(data.user));
-      // Redirect to dashboard
-      router.push('/dashboard');
+      if (data?.status == 200) {
+        Cookies.set("user", JSON.stringify(data.data));
+        // Redirect to dashboard
+        router.push("/dashboard");
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.log("login error: ", err);
+      setError(err.response?.data?.message || "Login failed");
     }
   };
 
@@ -99,4 +101,4 @@ export default function Home() {
       </div>
     </div>
   );
-} 
+}

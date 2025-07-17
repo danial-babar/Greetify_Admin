@@ -25,14 +25,14 @@ api.interceptors.request.use(
 
 // API interfaces
 export interface Category {
-  id: string;
+  _id: string;
   name: string;
   image?: string;
   background_linear_gradient?: [string, string]; // Array of two color values (hex, rgb, or rgba)
 }
 
 export interface SubCategory {
-  id: string;
+  _id: string;
   name: string;
   category_id: string;
   background_color: string; // Color value in hex, rgb, or rgba format
@@ -56,7 +56,7 @@ export interface CardElement {
 }
 
 export interface Card {
-  id?: string;
+  _id?: string;
   name: string;
   category_id: string;
   sub_category_id: string;
@@ -69,24 +69,23 @@ export interface Card {
 }
 
 export interface User {
-  id: string;
+  _id?: string;
   name: string;
   email: string;
-  role: string;
-  createdAt: string;
+  role?: string;
+  // Add more fields as needed
 }
 
 // Colors API
 export interface Color {
-  id: string;
+  _id: string;
   color: string; // hex value
 }
 
 // Auth API
 export const authAPI = {
   login: async (email: string, password: string) => {
-    const response = await api.post("/user/login", { email, password });
-    return response.data;
+    return await api.post("/auth/login", { email, password });
   },
 
   register: async (userData: {
@@ -94,32 +93,32 @@ export const authAPI = {
     email: string;
     password: string;
   }) => {
-    return await api.post("/user/register", userData);
+    return await api.post("/auth/register", userData);
   },
 
   forgotPassword: async (email: string) => {
-    return await api.post("/user/forgot-password", { email });
+    return await api.post("/auth/forgot-password", { email });
   },
 
   resetPassword: async (token: string, password: string) => {
-    return await api.post("/user/reset-password", { token, password });
+    return await api.post("/auth/reset-password", { token, password });
   },
 };
 
 // Categories API
 export const categoryAPI = {
   getAll: async () => {
-    const response = await api.get("/category");
+    const response = await api.get("/categories");
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/category/${id}`);
+    const response = await api.get(`/categories/${id}`);
     return response.data;
   },
 
   create: async (data: FormData) => {
-    const response = await api.post("/category", data, {
+    const response = await api.post("/categories", data, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -128,7 +127,7 @@ export const categoryAPI = {
   },
 
   update: async (id: string, data: FormData) => {
-    const response = await api.put(`/category/${id}`, data, {
+    const response = await api.put(`/categories/${id}`, data, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -137,7 +136,7 @@ export const categoryAPI = {
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/category/${id}`);
+    const response = await api.delete(`/categories/${id}`);
     return response.data;
   },
 };
@@ -145,17 +144,17 @@ export const categoryAPI = {
 // SubCategories API
 export const subCategoryAPI = {
   getAll: async () => {
-    const response = await api.get("/subcategory");
+    const response = await api.get("/subcategories");
     return response.data;
   },
 
   getByCategory: async (categoryId: string) => {
-    const response = await api.get(`/subcategory?category_id=${categoryId}`);
+    const response = await api.get(`/subcategories?category_id=${categoryId}`);
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/subcategory/${id}`);
+    const response = await api.get(`/subcategories/${id}`);
     return response.data;
   },
 
@@ -164,7 +163,7 @@ export const subCategoryAPI = {
     category_id: string;
     background_color: string;
   }) => {
-    const response = await api.post("/subcategory", data);
+    const response = await api.post("/subcategories", data);
     return response.data;
   },
 
@@ -172,12 +171,12 @@ export const subCategoryAPI = {
     id: string,
     data: { name: string; category_id: string; background_color: string }
   ) => {
-    const response = await api.put(`/subcategory/${id}`, data);
+    const response = await api.put(`/subcategories/${id}`, data);
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/subcategory/${id}`);
+    const response = await api.delete(`/subcategories/${id}`);
     return response.data;
   },
 };
@@ -185,17 +184,17 @@ export const subCategoryAPI = {
 // Cards API
 export const cardAPI = {
   getAll: async (page = 1, limit = 10) => {
-    const response = await api.get(`/card`);
+    const response = await api.get(`/cards`);
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/card/${id}`);
+    const response = await api.get(`/cards/${id}`);
     return response.data;
   },
 
   create: async (data: FormData) => {
-    const response = await api.post("/card", data, {
+    const response = await api.post("/cards", data, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -204,7 +203,7 @@ export const cardAPI = {
   },
 
   update: async (id: string, data: FormData) => {
-    const response = await api.put(`/card/${id}`, data, {
+    const response = await api.put(`/cards/${id}`, data, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -213,7 +212,7 @@ export const cardAPI = {
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/card/${id}`);
+    const response = await api.delete(`/cards/${id}`);
     return response.data;
   },
 };
@@ -221,59 +220,52 @@ export const cardAPI = {
 // Users API
 export const userAPI = {
   getAll: async () => {
-    const response = await api.get("/users");
-    return response.data.data;
+    return await api.get(`/users`);
   },
-
-  getById: async (id: string) => {
-    const response = await api.get(`/users/${id}`);
-    return response.data.data;
+  async getById(id: string) {
+    return fetch(`/users/${id}`).then((res) => res.json());
   },
-
-  create: async (userData: {
-    name: string;
-    email: string;
-    password: string;
-    role: string;
-  }) => {
-    const response = await api.post("/users", userData);
-    return response.data;
+  async create(user: Partial<User>) {
+    return fetch("/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(user),
+    }).then((res) => res.json());
   },
-
-  update: async (
-    id: string,
-    userData: { name?: string; email?: string; role?: string }
-  ) => {
-    const response = await api.put(`/users/${id}`, userData);
-    return response.data;
+  async update(id: string, user: Partial<User>) {
+    return fetch(`/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(user),
+    }).then((res) => res.json());
   },
-
-  delete: async (id: string) => {
-    const response = await api.delete(`/users/${id}`);
-    return response.data;
+  async delete(id: string) {
+    return fetch(`/users/${id}`, {
+      method: "DELETE",
+    }).then((res) => res.json());
   },
 };
 
 // Colors API
 export const colorAPI = {
   getAll: async () => {
-    const response = await api.get("/color");
+    const response = await api.get("/colors");
     return response.data;
   },
   getById: async (id: string) => {
-    const response = await api.get(`/color/${id}`);
+    const response = await api.get(`/colors/${id}`);
     return response.data;
   },
   create: async (data: { color: string }) => {
-    const response = await api.post("/color", data);
+    const response = await api.post("/colors", data);
     return response.data;
   },
   update: async (id: string, data: { color: string }) => {
-    const response = await api.put(`/color/${id}`, data);
+    const response = await api.put(`/colors/${id}`, data);
     return response.data;
   },
   delete: async (id: string) => {
-    const response = await api.delete(`/color/${id}`);
+    const response = await api.delete(`/colors/${id}`);
     return response.data;
   },
 };
