@@ -40,21 +40,20 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
         categoryAPI.getAll(),
       ]);
 
-      const card = cardResponse.data;
       const categoriesData = Array.isArray(categoriesResponse)
         ? categoriesResponse
         : categoriesResponse.data;
 
-      setCardName(card.name);
-      setSelectedCategoryId(card.category_id);
-      setSelectedSubCategoryId(card.sub_category_id);
-      setCardData(card);
+      setCardName(cardResponse.name);
+      setSelectedCategoryId(cardResponse.category_id);
+      setSelectedSubCategoryId(cardResponse.sub_category_id);
+      setCardData(cardResponse);
       setCategories(categoriesData);
 
       // Fetch subcategories for the selected category
-      if (card.category_id) {
+      if (cardResponse.category_id) {
         const subCategoriesResponse = await subCategoryAPI.getByCategory(
-          card.category_id
+          cardResponse.category_id
         );
         const subCategoriesData = Array.isArray(subCategoriesResponse)
           ? subCategoriesResponse

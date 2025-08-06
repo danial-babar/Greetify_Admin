@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
+    "Cache-Control": "no-cache",
     "Content-Type": "application/json",
     Accept: "application/json",
   },

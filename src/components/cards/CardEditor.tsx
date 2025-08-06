@@ -14,27 +14,43 @@ import { colorAPI, Color, CardElement, Card } from "@/services/api";
 // @ts-ignore
 import html2canvas from "html2canvas";
 
-export type UpdatedCardData = Omit<Card, "background_image" | "preview_image"> & {
+export type UpdatedCardData = Omit<
+  Card,
+  "background_image" | "preview_image"
+> & {
   background_image?: File;
   preview_image?: File;
-}
+};
 
-// Match mobile app fonts
+// Match exact with mobile app
 const EDITOR_FONTS = [
-  { name: "Amatic SC", value: "AmaticSC-Regular", bold: "AmaticSC-Bold" },
-  { name: "Caveat", value: "Caveat-Regular", bold: "Caveat-Bold" },
-  { name: "Roboto", value: "Roboto-Regular", bold: "Roboto-Bold" },
-  { name: "Caprasimo", value: "Caprasimo-Regular", bold: null },
-  { name: "Kalam", value: "Kalam-Regular", bold: "Kalam-Bold" },
+  { name: "Poppins", regular: "Poppins-Regular", bold: "Poppins-Bold" },
+  { name: "Roboto", regular: "Roboto-Regular", bold: "Roboto-Bold" },
+  { name: "Amatic SC", regular: "AmaticSC-Regular", bold: "AmaticSC-Bold" },
+  { name: "Caveat", regular: "Caveat-Regular", bold: "Caveat-Bold" },
+  { name: "GreatVibes", regular: "GreatVibes-Regular", bold: null },
+  { name: "Allura", regular: "Allura-Regular", bold: null },
+  { name: "Freehand", regular: "Freehand-Regular", bold: null },
+  { name: "Fuggles", regular: "Fuggles-Regular", bold: null },
+  { name: "Parisienne", regular: "Parisienne-Regular", bold: null },
+  { name: "AlexBrush", regular: "AlexBrush-Regular", bold: null },
+  { name: "Caprasimo", regular: "Caprasimo-Regular", bold: null },
+  { name: "Kalam", regular: "Kalam-Regular", bold: "Kalam-Bold" },
   {
     name: "Belanosima",
-    value: "Belanosima-Regular",
+    regular: "Belanosima-Regular",
     bold: "Belanosima-Regular",
   },
-  { name: "Oswald", value: "Oswald-Regular", bold: "Oswald-Bold" },
-  { name: "Freehand", value: "Freehand-Regular", bold: null },
-  { name: "Fuggles", value: "Fuggles-Regular", bold: null },
+  { name: "Oswald", regular: "Oswald-Regular", bold: "Oswald-Bold" },
+  { name: "Zendots", regular: "Zendots-Regular", bold: null },
+  { name: "Syne", regular: "Syne-Regular", bold: "Syne-Bold" },
+  { name: "Sora", regular: "Sora-Regular", bold: "Sora-Bold" },
+  { name: "Satisfy", regular: "Satisfy-Regular", bold: null },
+  { name: "Mulish", regular: "Mulish-Regular", bold: "Mulish-Bold" },
+  { name: "Montserrat", regular: "Montserrat-Regular", bold: "Montserrat-Bold" },
 ];
+
+const CENTER_THRESHOLD = 6;
 
 // Card dimensions (matching mobile app constants)
 const ASPECT_RATIO = 4 / 3;
@@ -92,6 +108,9 @@ export default function CardEditor({
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   const [colorsList, setColorsList] = useState<string[]>([]);
+
+  const [showHorAlignLine, setShowHorAlignLine] = useState(false);
+  const [showVerAlignLine, setShowVerAlignLine] = useState(false);
 
   // useEffect(() => {
   //   if (containerRef.current) {
@@ -200,25 +219,40 @@ export default function CardEditor({
     addToHistory(newCardData);
   };
 
+  const handleDrag = (e: any, data: { x: number; y: number }) => {
+    const { x, y } = data;
+    if (Math.abs(x) <= CENTER_THRESHOLD) setShowVerAlignLine(true);
+    else setShowVerAlignLine(false);
+    if (Math.abs(y) <= CENTER_THRESHOLD) setShowHorAlignLine(true);
+    else setShowHorAlignLine(false);
+  };
+
   const handleDragStop = (
     id: string,
     e: any,
     data: { x: number; y: number }
   ) => {
-    // Get the element being dragged
+    setShowHorAlignLine(false);
+    setShowVerAlignLine(false);
     const element = cardData.elements.find((el) => el.id === id);
     if (!element) return;
 
-    const posXPercent = Math.round((data.x / containerSize.width) * 100);
-    const posYPercent = Math.round((data.y / containerSize.height) * 100);
+    let { x, y } = data;
 
-    // Update position with percentages
+    const { width, height } = containerSize;
+
+    // Snap to center or edges
+    if (Math.abs(x) <= CENTER_THRESHOLD) x = 0;
+    if (Math.abs(y) <= CENTER_THRESHOLD) y = 0;
+
+    const posXPercent = Math.round((x / width) * 100);
+    const posYPercent = Math.round((y / height) * 100);
+
     updateElement(id, {
       positionX: posXPercent,
       positionY: posYPercent,
     });
   };
-
   // Image handling
   const { getRootProps, getInputProps } = useDropzone({
     accept: {
@@ -238,8 +272,8 @@ export default function CardEditor({
       // Regular font
       styles.push(`
         @font-face {
-          font-family: '${font.value}';
-          src: url('/fonts/${font.value}.ttf') format('truetype');
+          font-family: '${font.regular}';
+          src: url('/fonts/${font.regular}.ttf') format('truetype');
           font-weight: normal;
           font-style: normal;
           font-display: swap;
@@ -415,6 +449,25 @@ export default function CardEditor({
             height: containerSize.height,
           }}
         >
+          {/* Alignment lines */}
+          {showHorAlignLine && (
+            <div
+              className="absolute left-0 right-0 h-px"
+              style={{
+                top: `${containerSize.height / 2}px`,
+                backgroundColor: "rgba(255, 255, 255, 0.7)",
+              }}
+            />
+          )}
+          {showVerAlignLine && (
+            <div
+              className="absolute top-0 bottom-0 w-px"
+              style={{
+                left: `${containerSize.width / 2}px`,
+                backgroundColor: "rgba(255, 255, 255, 0.7)",
+              }}
+            />
+          )}
           <div
             {...getRootProps()}
             data-dropzone
@@ -437,10 +490,11 @@ export default function CardEditor({
           {cardData.elements.map((element) => (
             <Draggable
               key={element.id}
-              defaultPosition={{
+              position={{
                 x: (element.positionX / 100) * containerSize.width,
                 y: (element.positionY / 100) * containerSize.height,
               }}
+              onDrag={handleDrag}
               onStop={(e, data) => handleDragStop(element.id, e, data)}
               bounds="parent"
             >
@@ -457,7 +511,7 @@ export default function CardEditor({
                     fontFamily:
                       element.bold && EDITOR_FONTS[element.fontStyleIndex]?.bold
                         ? EDITOR_FONTS[element.fontStyleIndex].bold!
-                        : EDITOR_FONTS[element.fontStyleIndex]?.value ||
+                        : EDITOR_FONTS[element.fontStyleIndex]?.regular ||
                           "Arial",
                     fontSize: `${
                       (element.fontSize / 100) * containerSize.width
@@ -522,7 +576,7 @@ export default function CardEditor({
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-left flex justify-between items-center"
                     style={{
                       fontFamily: `"${
-                        EDITOR_FONTS[selectedElementData.fontStyleIndex].value
+                        EDITOR_FONTS[selectedElementData.fontStyleIndex].regular
                       }", sans-serif`,
                     }}
                   >
@@ -557,7 +611,7 @@ export default function CardEditor({
                             setFontDropdownOpen(false);
                           }}
                           style={{
-                            fontFamily: `"${font.value}", sans-serif`,
+                            fontFamily: `"${font.regular}", sans-serif`,
                             fontSize: "16px",
                           }}
                         >
@@ -592,6 +646,7 @@ export default function CardEditor({
                   type="range"
                   min="1"
                   max="100"
+                  step={1}
                   value={selectedElementData.fontSize}
                   onChange={(e) =>
                     updateElement(selectedElementData.id, {
