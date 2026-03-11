@@ -22,8 +22,12 @@ export default function EditCategoryPage({ params }: { params: { id: string } })
   const fetchCategory = async () => {
     try {
       setLoading(true);
-      let category = await categoryAPI.getById(params.id);
-      category = category.data;
+      const response = await categoryAPI.getById(params.id);
+      const category = response?.data ?? response;
+      if (!category) {
+        toast.error('Category not found');
+        return;
+      }
       setName(category.name);
       if (category.image) {
         setCurrentImage(category.image);

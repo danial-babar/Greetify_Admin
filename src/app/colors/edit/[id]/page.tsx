@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { colorAPI, Color } from "@/services/api";
 import { HexAlphaColorPicker } from "react-colorful";
+import EyedropperButton from "@/components/ui/EyedropperButton";
 
 function toHex8(hex: string) {
   if (/^#[0-9a-fA-F]{8}$/.test(hex)) return hex.toUpperCase();
@@ -50,7 +51,14 @@ export default function EditColorPage({ params }: { params: { id: string } }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Color (with opacity)</label>
-            <HexAlphaColorPicker color={color} onChange={setColor} className="mb-2" />
+            <div className="flex items-center gap-2 mb-2">
+              <HexAlphaColorPicker color={color} onChange={setColor} className="flex-1" />
+              <EyedropperButton
+                onPick={setColor}
+                title="Pick color from screen"
+                className="w-10 h-10 shrink-0"
+              />
+            </div>
             <input
               type="text"
               value={color}

@@ -28,8 +28,13 @@ export default function EditSubCategoryPage({ params }: { params: { id: string }
         categoryAPI.getAll()
       ]);
 
-      const subCategory = subCategoryResponse.data;
-      const categoriesData = Array.isArray(categoriesResponse) ? categoriesResponse : categoriesResponse.data;
+      const subCategory = subCategoryResponse?.data ?? subCategoryResponse;
+      const categoriesData = Array.isArray(categoriesResponse) ? categoriesResponse : categoriesResponse?.data ?? [];
+
+      if (!subCategory) {
+        toast.error('Subcategory not found');
+        return;
+      }
 
       setName(subCategory.name);
       setCategoryId(subCategory.category_id);

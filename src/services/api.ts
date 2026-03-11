@@ -19,6 +19,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Let the browser set Content-Type with boundary for FormData (otherwise body is sent empty)
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -39,21 +43,41 @@ export interface SubCategory {
   background_color: string; // Color value in hex, rgb, or rgba format
 }
 
+export type ShapeType =
+  | "line"
+  | "rect-fill"
+  | "rect-border"
+  | "circle-fill"
+  | "circle-border";
+
 export interface CardElement {
   id: string;
-  type: "text";
-  text: string;
+  type: "text" | ShapeType;
+  // Text-specific (when type === "text")
+  text?: string;
+  fontStyleIndex?: number;
+  bold?: boolean;
+  italic?: boolean;
+  alignment?: "left" | "center" | "right";
+  lineHeight?: number;
+  fontSize?: number;
+  // Common
   positionX: number;
   positionY: number;
   color: string;
-  fontStyleIndex: number;
-  bold: boolean;
-  italic: boolean;
-  scale: number;
-  rotate: number;
-  alignment: "left" | "center" | "right";
-  lineHeight: number;
-  fontSize: number;
+  scale?: number;
+  rotate?: number;
+  // Shape-specific (when type is shape)
+  /** End point X (%) - for line */
+  positionX2?: number;
+  /** End point Y (%) - for line */
+  positionY2?: number;
+  /** Width in % of artboard - for rect/circle */
+  width?: number;
+  /** Height in % of artboard - for rect/circle */
+  height?: number;
+  /** Stroke width in px - for line and border shapes */
+  strokeWidth?: number;
 }
 
 export interface Card {

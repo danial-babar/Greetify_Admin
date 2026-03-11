@@ -46,7 +46,11 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
 
       setCardName(cardResponse.name);
       setSelectedCategoryId(cardResponse.category_id);
-      setSelectedSubCategoryId(cardResponse.sub_category_id);
+      setSelectedSubCategoryId(
+        (cardResponse as { subcategory_id?: string }).subcategory_id ??
+          cardResponse.sub_category_id ??
+          ""
+      );
       setCardData(cardResponse);
       setCategories(categoriesData);
 
@@ -98,6 +102,11 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
           );
 
           setFilteredSubCategories(filtered);
+          // Only clear subcategory if current selection is not in the new list (e.g. user changed category)
+          setSelectedSubCategoryId((current) => {
+            const isInList = filtered.some((s: SubCategory) => s._id === current);
+            return isInList ? current : "";
+          });
         } catch (error) {
           console.error("Error fetching subcategories:", error);
           toast.error("Failed to load subcategories");
@@ -108,9 +117,6 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
       };
 
       fetchSubCategories();
-
-      // Reset subcategory selection
-      setSelectedSubCategoryId("");
     } else {
       setFilteredSubCategories([]);
       setSelectedSubCategoryId("");
@@ -147,16 +153,30 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
 
       // Make sure each element has all required properties for the mobile app
       const processedElements = updatedCardData.elements.map((el) => {
-        // Get the position value, ensuring it's consistent across all position properties
         const posX =
           typeof el.positionX === "number" ? Math.round(el.positionX) : 0;
         const posY =
           typeof el.positionY === "number" ? Math.round(el.positionY) : 0;
         const scale = el.scale || 1;
 
+        const isShape =
+          el.type === "line" ||
+          el.type === "rect-fill" ||
+          el.type === "rect-border" ||
+          el.type === "circle-fill" ||
+          el.type === "circle-border";
+
+        if (isShape) {
+          return {
+            ...el,
+            lineHeight: 1,
+            positionX: posX,
+            positionY: posY,
+          };
+        }
+
         return {
           ...el,
-          // Ensure the type is text and all values are in the correct format
           type: "text" as const,
           text: el.text || "",
           fontStyleIndex: el.fontStyleIndex || 0,
@@ -168,6 +188,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
           alignment: el.alignment || "center",
           positionX: posX,
           positionY: posY,
+          lineHeight: typeof el.lineHeight === "number" ? el.lineHeight : 1,
         };
       });
 
@@ -217,72 +238,67 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
               <div className="sm:col-span-3">
                 <label
                   htmlFor="card-name"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-700 mb-1.5"
                 >
                   Card Name
                 </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="card-name"
-                    id="card-name"
-                    value={cardName}
-                    onChange={(e) => setCardName(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  />
-                </div>
+                <input
+                  type="text"
+                  name="card-name"
+                  id="card-name"
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  placeholder="e.g. Wedding Invitation"
+                  className="block w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200 hover:border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:shadow-md disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+                />
               </div>
 
               <div className="sm:col-span-3">
                 <label
                   htmlFor="category"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-700 mb-1.5"
                 >
                   Category
                 </label>
-                <div className="mt-1">
-                  <select
-                    id="category"
-                    name="category"
-                    value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
-                    disabled={loading}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category._id} value={category._id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  id="category"
+                  name="category"
+                  value={selectedCategoryId}
+                  onChange={(e) => setSelectedCategoryId(e.target.value)}
+                  disabled={loading}
+                  className="block w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 hover:border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:shadow-md disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60 sm:text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.5rem_1.5rem] bg-[right_0.5rem_center] bg-no-repeat pr-10"
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="sm:col-span-3">
                 <label
                   htmlFor="subcategory"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-700 mb-1.5"
                 >
                   Subcategory
                 </label>
-                <div className="mt-1">
-                  <select
-                    id="subcategory"
-                    name="subcategory"
-                    value={selectedSubCategoryId}
-                    onChange={(e) => setSelectedSubCategoryId(e.target.value)}
-                    disabled={!selectedCategoryId || loading}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  >
-                    <option value="">Select a subcategory</option>
-                    {filteredSubCategories.map((subCategory) => (
-                      <option key={subCategory._id} value={subCategory._id}>
-                        {subCategory.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  id="subcategory"
+                  name="subcategory"
+                  value={selectedSubCategoryId}
+                  onChange={(e) => setSelectedSubCategoryId(e.target.value)}
+                  disabled={!selectedCategoryId || loading}
+                  className="block w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 hover:border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:shadow-md disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60 sm:text-sm appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.5rem_1.5rem] bg-[right_0.5rem_center] bg-no-repeat pr-10"
+                >
+                  <option value="">Select a subcategory</option>
+                  {filteredSubCategories.map((subCategory) => (
+                    <option key={subCategory._id} value={subCategory._id}>
+                      {subCategory.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* <div className="sm:col-span-3">
