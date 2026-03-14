@@ -18,7 +18,6 @@ export default function CardsPage() {
       try {
         setLoading(true);
         let cardsData = await cardAPI.getAll();
-        // Handle different response formats
         if (Array.isArray(cardsData)) {
           setCards(cardsData);
         } else {
