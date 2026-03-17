@@ -97,6 +97,7 @@ export interface User {
 export interface Color {
   _id: string;
   color: string; // hex value
+  order: number;
 }
 
 // Auth API
@@ -291,11 +292,11 @@ export const colorAPI = {
     const response = await api.get(`/colors/${id}`);
     return response.data;
   },
-  create: async (data: { color: string }) => {
+  create: async (data: { color: string; order: number }) => {
     const response = await api.post("/colors", data);
     return response.data;
   },
-  update: async (id: string, data: { color: string }) => {
+  update: async (id: string, data: { color: string; order: number }) => {
     const response = await api.put(`/colors/${id}`, data);
     return response.data;
   },

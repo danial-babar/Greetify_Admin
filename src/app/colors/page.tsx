@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,8 +13,6 @@ export default function ColorsPage() {
     colorAPI.getAll().then((data) => {
       if (Array.isArray(data)) {
         setColors(data);
-      } else if (Array.isArray(data?.data)) {
-        setColors(data.data);
       } else {
         setColors([]);
       }
@@ -34,7 +32,12 @@ export default function ColorsPage() {
       <div className="p-6 max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Colors</h1>
-          <Link href="/colors/create" className="px-4 py-2 bg-primary-600 text-white rounded">Add Color</Link>
+          <Link
+            href="/colors/create"
+            className="px-4 py-2 bg-primary-600 text-white rounded"
+          >
+            Add Color
+          </Link>
         </div>
         {loading ? (
           <div>Loading...</div>
@@ -44,6 +47,7 @@ export default function ColorsPage() {
           <table className="w-full border">
             <thead>
               <tr className="bg-gray-100">
+                <th className="p-2 text-left">Order</th>
                 <th className="p-2 text-left">Color</th>
                 <th className="p-2">Actions</th>
               </tr>
@@ -51,13 +55,27 @@ export default function ColorsPage() {
             <tbody>
               {colors.map((color) => (
                 <tr key={color._id} className="border-t">
+                  <td className="p-2 text-sm text-gray-700">{color.order}</td>
                   <td className="p-2">
-                    <span className="inline-block w-8 h-8 rounded-full border border-gray-300" style={{ backgroundColor: color.color }} />
+                    <span
+                      className="inline-block w-8 h-8 rounded-full border border-gray-300"
+                      style={{ backgroundColor: color.color }}
+                    />
                     <span className="ml-2 text-xs">{color.color}</span>
                   </td>
                   <td className="p-2 flex gap-2">
-                    <Link href={`/colors/edit/${color._id}`} className="px-2 py-1 bg-blue-500 text-white rounded">Edit</Link>
-                    <button onClick={() => handleDelete(color._id)} className="px-2 py-1 bg-red-500 text-white rounded">Delete</button>
+                    <Link
+                      href={`/colors/edit/${color._id}`}
+                      className="px-2 py-1 bg-blue-500 text-white rounded"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(color._id)}
+                      className="px-2 py-1 bg-red-500 text-white rounded"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -67,4 +85,4 @@ export default function ColorsPage() {
       </div>
     </DashboardLayout>
   );
-} 
+}

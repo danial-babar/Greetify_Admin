@@ -13,14 +13,19 @@ function toHex8(hex: string) {
 
 export default function CreateColorPage() {
   const [color, setColor] = useState("#000000FF");
+  const [order, setOrder] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (order === "" || Number.isNaN(Number(order))) {
+      alert("Order is required");
+      return;
+    }
     setSaving(true);
     try {
-      await colorAPI.create({ color: toHex8(color) });
+      await colorAPI.create({ color: toHex8(color), order: Number(order) });
       router.push("/colors");
     } catch (err) {
       alert("Failed to create color");
@@ -46,6 +51,21 @@ export default function CreateColorPage() {
               placeholder="#RRGGBBAA"
             />
             <span className="ml-3 text-xs">{(color)}</span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Order <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              value={order}
+              onChange={(e) =>
+                setOrder(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              className="block w-full rounded border border-gray-300 px-2 py-1 text-sm"
+              placeholder="Enter sort order"
+              required
+            />
           </div>
           <button
             type="submit"
