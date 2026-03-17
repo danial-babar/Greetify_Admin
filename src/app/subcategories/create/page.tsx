@@ -2,19 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormik } from 'formik';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { Category, subCategoryAPI, categoryAPI } from '@/services/api';
 import { toast } from 'react-hot-toast';
-import { HexAlphaColorPicker } from 'react-colorful';
+
+type FormValues = {
+  name: string;
+  categoryId: string;
+};
 
 export default function CreateSubCategoryPage() {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [background_color, setBackgroundColor] = useState('#000000FF');
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -31,35 +32,37 @@ export default function CreateSubCategoryPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error('Please enter a subcategory name');
-      return;
-    }
-    if (!categoryId) {
-      toast.error('Please select a category');
-      return;
-    }
+  const formik = useFormik<FormValues>({
+    initialValues: {
+      name: '',
+      categoryId: '',
+    },
+    validate: (values) => {
+      const errors: Partial<Record<keyof FormValues, string>> = {};
 
-    try {
-      setLoading(true);
-      const data = {
-        name,
-        category_id: categoryId,
-        background_color
-      };
+      if (!values.name.trim()) errors.name = 'Name is required';
+      if (!values.categoryId) errors.categoryId = 'Category is required';
 
-      await subCategoryAPI.create(data);
-      toast.success('Subcategory created successfully');
-      router.push('/subcategories');
-    } catch (error) {
-      console.error('Error creating subcategory:', error);
-      toast.error('Failed to create subcategory');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return errors;
+    },
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        setLoading(true);
+        await subCategoryAPI.create({
+          name: values.name.trim(),
+          category_id: values.categoryId,
+        });
+        toast.success('Subcategory created successfully');
+        router.push('/subcategories');
+      } catch (error) {
+        console.error('Error creating subcategory:', error);
+        toast.error('Failed to create subcategory');
+      } finally {
+        setLoading(false);
+        setSubmitting(false);
+      }
+    },
+  });
 
   return (
     <DashboardLayout>
@@ -73,31 +76,46 @@ export default function CreateSubCategoryPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div className="space-y-4">
+        <form onSubmit={formik.handleSubmit} className="mt-8">
+          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-6">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Name
+              <label htmlFor="name" className="block text-sm font-medium text-gray-800">
+                Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                name="name"
+                value={formik.values.name}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                className={`mt-1.5 block h-11 w-full rounded-lg border bg-white px-3 text-sm shadow-sm transition focus:outline-none focus:ring-2 ${
+                  formik.touched.name && formik.errors.name
+                    ? 'border-red-300 focus:border-red-400 focus:ring-red-200'
+                    : 'border-gray-300 focus:border-primary-500 focus:ring-primary-200'
+                }`}
                 required
               />
+              {formik.touched.name && formik.errors.name && (
+                <p className="mt-1 text-xs text-red-600">{formik.errors.name}</p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                Category
+              <label htmlFor="category" className="block text-sm font-medium text-gray-800">
+                Category <span className="text-red-500">*</span>
               </label>
               <select
                 id="category"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                name="categoryId"
+                value={formik.values.categoryId}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                className={`mt-1.5 block h-11 w-full rounded-lg border bg-white px-3 text-sm shadow-sm transition focus:outline-none focus:ring-2 ${
+                  formik.touched.categoryId && formik.errors.categoryId
+                    ? 'border-red-300 focus:border-red-400 focus:ring-red-200'
+                    : 'border-gray-300 focus:border-primary-500 focus:ring-primary-200'
+                }`}
                 required
               >
                 <option value="">Select a category</option>
@@ -107,51 +125,13 @@ export default function CreateSubCategoryPage() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Background Color
-              </label>
-              <div className="relative mt-1 flex items-center">
-                <button
-                  type="button"
-                  onClick={() => setShowColorPicker(true)}
-                  className="mr-2 h-8 w-8 rounded border border-gray-300"
-                  style={{ backgroundColor: background_color }}
-                  aria-label="Pick a color"
-                />
-                <input
-                  type="text"
-                  value={background_color}
-                  onChange={(e) => setBackgroundColor(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  placeholder="#RRGGBBAA"
-                  maxLength={9}
-                />
-                {showColorPicker && (
-                  <div className="absolute z-10 top-full left-0 mt-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg">
-                    <HexAlphaColorPicker
-                      color={background_color}
-                      onChange={setBackgroundColor}
-                    />
-                    <div className="flex justify-end mt-2">
-                      <button
-                        type="button"
-                        className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-                        onClick={() => setShowColorPicker(false)}
-                      >
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="mt-2 h-8 w-full rounded" style={{ backgroundColor: background_color }} />
+              {formik.touched.categoryId && formik.errors.categoryId && (
+                <p className="mt-1 text-xs text-red-600">{formik.errors.categoryId}</p>
+              )}
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="mt-6 flex justify-end space-x-3">
             <button
               type="button"
               onClick={() => router.back()}
@@ -161,10 +141,12 @@ export default function CreateSubCategoryPage() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || formik.isSubmitting}
               className="inline-flex justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             >
-              {loading ? 'Creating...' : 'Create Subcategory'}
+              {loading || formik.isSubmitting
+                ? 'Creating...'
+                : 'Create Subcategory'}
             </button>
           </div>
         </form>

@@ -200,18 +200,18 @@ export default function CreateCardPage() {
               <div className="sm:col-span-3">
                 <label
                   htmlFor="card-name"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-800"
                 >
                   Card Name
                 </label>
-                <div className="mt-1">
+                <div className="mt-1.5">
                   <input
                     type="text"
                     name="card-name"
                     id="card-name"
                     value={cardName}
                     onChange={(e) => setCardName(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    className="block h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm transition hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
                   />
                 </div>
               </div>
@@ -219,18 +219,18 @@ export default function CreateCardPage() {
               <div className="sm:col-span-3">
                 <label
                   htmlFor="category"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-800"
                 >
                   Category
                 </label>
-                <div className="mt-1">
+                <div className="mt-1.5">
                   <select
                     id="category"
                     name="category"
                     value={selectedCategoryId}
                     onChange={(e) => setSelectedCategoryId(e.target.value)}
                     disabled={loading}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    className="block h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm transition hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="">Select a category</option>
                     {categories.map((category) => (
@@ -245,18 +245,18 @@ export default function CreateCardPage() {
               <div className="sm:col-span-3">
                 <label
                   htmlFor="subcategory"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-medium text-gray-800"
                 >
                   Subcategory
                 </label>
-                <div className="mt-1">
+                <div className="mt-1.5">
                   <select
                     id="subcategory"
                     name="subcategory"
                     value={selectedSubCategoryId}
                     onChange={(e) => setSelectedSubCategoryId(e.target.value)}
                     disabled={!selectedCategoryId || loading}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    className="block h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm transition hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="">Select a subcategory</option>
                     {filteredSubCategories.map((subCategory) => (

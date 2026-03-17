@@ -11,6 +11,7 @@ export default function SubCategoriesPage() {
   const router = useRouter();
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,6 +57,10 @@ export default function SubCategoriesPage() {
     return category ? category.name : 'Unknown Category';
   };
 
+  const filteredSubCategories = selectedCategoryId
+    ? subCategories.filter((subCategory) => subCategory.category_id === selectedCategoryId)
+    : subCategories;
+
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
@@ -77,6 +82,28 @@ export default function SubCategoriesPage() {
         </div>
 
         <div className="mt-8 flex flex-col">
+          <div className="mb-5 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <label
+              htmlFor="category-filter"
+              className="block text-sm font-medium text-gray-800"
+            >
+              Filter by category
+            </label>
+            <select
+              id="category-filter"
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              className="mt-1.5 block h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm transition hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              <option value="">All categories</option>
+              {categories.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
               <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
@@ -89,9 +116,6 @@ export default function SubCategoriesPage() {
                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Category
                       </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Background Color
-                      </th>
                       <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                         <span className="sr-only">Actions</span>
                       </th>
@@ -100,35 +124,24 @@ export default function SubCategoriesPage() {
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {loading ? (
                       <tr>
-                        <td colSpan={4} className="px-3 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={3} className="px-3 py-4 text-center text-sm text-gray-500">
                           Loading...
                         </td>
                       </tr>
-                    ) : subCategories.length === 0 ? (
+                    ) : filteredSubCategories.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-3 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={3} className="px-3 py-4 text-center text-sm text-gray-500">
                           No subcategories found
                         </td>
                       </tr>
                     ) : (
-                      subCategories.map((subCategory) => (
+                      filteredSubCategories.map((subCategory) => (
                         <tr key={subCategory._id}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                             {subCategory.name}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             {getCategoryName(subCategory.category_id)}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            <div className="flex items-center space-x-2">
-                              <div
-                                className="h-6 w-6 rounded"
-                                style={{ backgroundColor: subCategory.background_color }}
-                              />
-                              <span className="text-xs text-gray-400">
-                                {subCategory.background_color}
-                              </span>
-                            </div>
                           </td>
                           <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                             <button

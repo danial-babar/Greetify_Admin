@@ -36,7 +36,6 @@ export interface SubCategory {
   _id: string;
   name: string;
   category_id: string;
-  background_color: string; // Color value in hex, rgb, or rgba format
 }
 
 export interface TextElement {
@@ -179,7 +178,6 @@ export const subCategoryAPI = {
   create: async (data: {
     name: string;
     category_id: string;
-    background_color: string;
   }) => {
     const response = await api.post("/subcategories", data);
     return response.data;
@@ -187,7 +185,7 @@ export const subCategoryAPI = {
 
   update: async (
     id: string,
-    data: { name: string; category_id: string; background_color: string },
+    data: { name: string; category_id: string },
   ) => {
     const response = await api.put(`/subcategories/${id}`, data);
     return response.data;
