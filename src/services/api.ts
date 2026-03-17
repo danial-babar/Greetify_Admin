@@ -21,7 +21,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // API interfaces
@@ -39,7 +39,7 @@ export interface SubCategory {
   background_color: string; // Color value in hex, rgb, or rgba format
 }
 
-export interface CardElement {
+export interface TextElement {
   id: string;
   type: "text";
   text: string;
@@ -56,17 +56,34 @@ export interface CardElement {
   fontSize: number;
 }
 
+export interface ShapeElement {
+  id: string;
+  type: "shape";
+  shapeType: "line";
+  positionX: number;
+  positionY: number;
+  color: string;
+  width: number; // percentage of container width (0-100)
+  height: number; // line thickness in pixels
+  rotate: number;
+  borderRadius?: number; // in px
+}
+
+export type CardElement = TextElement | ShapeElement;
+
 export interface Card {
   _id?: string;
   name: string;
   category_id: string;
-  sub_category_id: string;
+  subcategory_id: string;
   background_image?: string;
   preview_image?: string;
   aspect_ratio?: number;
   elements: CardElement[];
   createdAt?: string;
   updatedAt?: string;
+  category?: { _id: string; name: string };
+  subcategory?: { _id: string; name: string };
 }
 
 export interface User {
@@ -170,7 +187,7 @@ export const subCategoryAPI = {
 
   update: async (
     id: string,
-    data: { name: string; category_id: string; background_color: string }
+    data: { name: string; category_id: string; background_color: string },
   ) => {
     const response = await api.put(`/subcategories/${id}`, data);
     return response.data;
@@ -184,8 +201,27 @@ export const subCategoryAPI = {
 
 // Cards API
 export const cardAPI = {
-  getAll: async (page = 1, limit = 10) => {
-    const response = await api.get(`/cards`);
+  getAll: async (
+    params: {
+      category_id?: string;
+      subcategory_id?: string;
+      search?: string;
+      page?: number;
+      is_populate?: boolean;
+    } = {},
+    controller?: AbortController,
+  ) => {
+    const query = new URLSearchParams();
+    if (params.category_id) query.append("category_id", params.category_id);
+    if (params.subcategory_id)
+      query.append("subcategory_id", params.subcategory_id);
+    if (params.search?.trim()) query.append("search", params.search.trim());
+    if (params.page) query.append("page", String(params.page));
+    if (params.is_populate)
+      query.append("is_populate", String(params.is_populate));
+    const response = await api.get(`/cards?${query.toString()}`, {
+      signal: controller?.signal,
+    });
     return response.data;
   },
 

@@ -46,7 +46,7 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
 
       setCardName(cardResponse.name);
       setSelectedCategoryId(cardResponse.category_id);
-      setSelectedSubCategoryId(cardResponse.sub_category_id);
+      setSelectedSubCategoryId(cardResponse.subcategory_id);
       setCardData(cardResponse);
       setCategories(categoriesData);
 
@@ -143,29 +143,17 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
       const formData = new FormData();
       formData.append("name", cardName);
       formData.append("category_id", selectedCategoryId);
-      formData.append("sub_category_id", selectedSubCategoryId);
+      formData.append("subcategory_id", selectedSubCategoryId);
 
       // Make sure each element has all required properties for the mobile app
       const processedElements = updatedCardData.elements.map((el) => {
-        // Get the position value, ensuring it's consistent across all position properties
         const posX =
           typeof el.positionX === "number" ? Math.round(el.positionX) : 0;
         const posY =
           typeof el.positionY === "number" ? Math.round(el.positionY) : 0;
-        const scale = el.scale || 1;
 
         return {
           ...el,
-          // Ensure the type is text and all values are in the correct format
-          type: "text" as const,
-          text: el.text || "",
-          fontStyleIndex: el.fontStyleIndex || 0,
-          colorIndex: el.color || 0,
-          scale: scale,
-          rotate: el.rotate || 0,
-          bold: !!el.bold,
-          italic: !!el.italic,
-          alignment: el.alignment || "center",
           positionX: posX,
           positionY: posY,
         };

@@ -3,45 +3,106 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import Link from "next/link";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { Card, cardAPI } from "@/services/api";
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  MagnifyingGlassIcon,
+} from "@heroicons/react/24/outline";
+import { Card, Category, SubCategory, cardAPI, categoryAPI, subCategoryAPI } from "@/services/api";
 import { toast } from "react-hot-toast";
 
 export default function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState("");
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // Fetch cards from API
+  // Fetch categories and subcategories for filtering
   useEffect(() => {
-    const fetchCards = async () => {
+    const fetchFilterData = async () => {
+      try {
+        const [categoriesData, subCategoriesData] = await Promise.all([
+          categoryAPI.getAll(),
+          subCategoryAPI.getAll(),
+        ]);
+
+        if (Array.isArray(categoriesData)) {
+          setCategories(categoriesData);
+        } else if (categoriesData && Array.isArray(categoriesData.data)) {
+          setCategories(categoriesData.data);
+        } else {
+          setCategories([]);
+        }
+
+        if (Array.isArray(subCategoriesData)) {
+          setSubCategories(subCategoriesData);
+        } else if (subCategoriesData && Array.isArray(subCategoriesData.data)) {
+          setSubCategories(subCategoriesData.data);
+        } else {
+          setSubCategories([]);
+        }
+      } catch (error) {
+        console.error("Error fetching filter data:", error);
+        toast.error("Failed to load categories and subcategories.");
+      }
+    };
+
+    fetchFilterData();
+  }, []);
+
+  // Fetch cards from API based on filters
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
       try {
         setLoading(true);
-        let cardsData = await cardAPI.getAll();
+        const cardsData = await cardAPI.getAll(
+          {
+            is_populate: true,
+            search: searchTerm,
+            category_id: selectedCategoryId || undefined,
+            subcategory_id: selectedSubCategoryId || undefined,
+          },
+          controller,
+        );
+
         if (Array.isArray(cardsData)) {
           setCards(cardsData);
         } else {
           console.error("Unexpected cards data format:", cardsData);
           setCards([]);
         }
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching cards:", error);
-        toast.error("Failed to load cards. Please try again.");
+      } catch (error: any) {
+        if (error?.name !== "CanceledError" && error?.name !== "AbortError") {
+          console.error("Error fetching cards:", error);
+          toast.error("Failed to load cards. Please try again.");
+        }
+      } finally {
         setLoading(false);
       }
-    };
+    }, 300);
 
-    fetchCards();
-  }, []);
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [searchTerm, selectedCategoryId, selectedSubCategoryId]);
+
+  const filteredSubCategories = selectedCategoryId
+    ? subCategories.filter((subCategory) => subCategory.category_id === selectedCategoryId)
+    : subCategories;
 
   const handleDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this card?")) {
       try {
         setDeleting(id);
         await cardAPI.delete(id);
-        setCards(cards.filter((card) => card._id !== id));
+        setCards((prevCards) => prevCards.filter((card) => card._id !== id));
         toast.success("Card deleted successfully");
         setDeleting(null);
       } catch (error) {
@@ -73,6 +134,90 @@ export default function CardsPage() {
         </div>
       </div>
 
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div>
+            <label
+              htmlFor="card-search"
+              className="mb-1.5 block text-sm font-medium text-gray-700"
+            >
+              Search
+            </label>
+            <div className="relative">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                id="card-search"
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by card name"
+                className="block h-10 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 shadow-sm transition placeholder:text-gray-400 hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+          </div>
+          <div>
+            <label
+              htmlFor="category-filter"
+              className="mb-1.5 block text-sm font-medium text-gray-700"
+            >
+              Category
+            </label>
+            <select
+              id="category-filter"
+              value={selectedCategoryId}
+              onChange={(e) => {
+                const newCategoryId = e.target.value;
+                setSelectedCategoryId(newCategoryId);
+                setSelectedSubCategoryId("");
+              }}
+              className="block h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm transition hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            >
+              <option value="">All categories</option>
+              {categories.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="subcategory-filter"
+              className="mb-1.5 block text-sm font-medium text-gray-700"
+            >
+              Subcategory
+            </label>
+            <select
+              id="subcategory-filter"
+              value={selectedSubCategoryId}
+              onChange={(e) => setSelectedSubCategoryId(e.target.value)}
+              disabled={!selectedCategoryId}
+              className="block h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm transition hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
+            >
+              <option value="">All subcategories</option>
+              {filteredSubCategories.map((subCategory) => (
+                <option key={subCategory._id} value={subCategory._id}>
+                  {subCategory.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm("");
+              setSelectedCategoryId("");
+              setSelectedSubCategoryId("");
+            }}
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          >
+            Clear filters
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="mt-6 flex justify-center">
           <p className="text-gray-500">Loading cards...</p>
@@ -96,6 +241,18 @@ export default function CardsPage() {
                         className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
                       >
                         Name
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
+                        Category
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                      >
+                        Subcategory
                       </th>
                       <th
                         scope="col"
@@ -130,9 +287,16 @@ export default function CardsPage() {
                           {card.name}
                         </td>
                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {card.category?.name || "N/A"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                          {card.subcategory?.name || "N/A"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                           <a
                             className="w-16 bg-gray-100 rounded overflow-hidden relative"
-                            target="black"
+                            target="_blank"
+                            rel="noreferrer"
                             href={card.preview_image}
                           >
                             {card.preview_image ? (

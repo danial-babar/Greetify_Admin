@@ -142,20 +142,9 @@ export default function CreateCardPage() {
           typeof el.positionX === "number" ? Math.round(el.positionX) : 0;
         const posY =
           typeof el.positionY === "number" ? Math.round(el.positionY) : 0;
-        const scale = el.scale || 1;
 
         return {
           ...el,
-          // Ensure the type is text and all values are in the correct format
-          type: "text" as const,
-          text: el.text || "",
-          fontStyleIndex: el.fontStyleIndex || 0,
-          color: el.color || 0,
-          scale: scale,
-          rotate: el.rotate || 0,
-          bold: !!el.bold,
-          italic: !!el.italic,
-          alignment: el.alignment || "center",
           // Use consistent position values for all position-related properties
           positionX: posX,
           positionY: posY,

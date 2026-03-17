@@ -8,11 +8,19 @@ import {
   ArrowUturnLeftIcon,
   ArrowUturnRightIcon,
   CheckIcon,
-  SwatchIcon,
+  XMarkIcon,
+  Square2StackIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { colorAPI, Color, CardElement, Card } from "@/services/api";
-// @ts-ignore
-import html2canvas from "html2canvas";
+import {
+  colorAPI,
+  Color,
+  CardElement,
+  Card,
+  TextElement,
+  ShapeElement,
+} from "@/services/api";
+import * as htmlToImage from "html-to-image";
 
 export type UpdatedCardData = Omit<
   Card,
@@ -47,34 +55,47 @@ const EDITOR_FONTS = [
   { name: "Sora", regular: "Sora-Regular", bold: "Sora-Bold" },
   { name: "Satisfy", regular: "Satisfy-Regular", bold: null },
   { name: "Mulish", regular: "Mulish-Regular", bold: "Mulish-Bold" },
-  { name: "Montserrat", regular: "Montserrat-Regular", bold: "Montserrat-Bold" },
+  {
+    name: "Montserrat",
+    regular: "Montserrat-Regular",
+    bold: "Montserrat-Bold",
+  },
 ];
 
 const CENTER_THRESHOLD = 6;
+
+const isTextElement = (el: CardElement): el is TextElement =>
+  el.type === "text";
+const isShapeElement = (el: CardElement): el is ShapeElement =>
+  el.type === "shape";
+
+// Line rendered as div
+function LineShape({
+  element,
+  containerSize,
+}: {
+  element: ShapeElement;
+  containerSize: { width: number; height: number };
+}) {
+  const { color, width, height, borderRadius = 0, rotate } = element;
+  const widthPx = (width / 100) * containerSize.width;
+  return (
+    <div
+      style={{
+        width: widthPx,
+        height,
+        backgroundColor: color,
+        // transform: `rotate(${rotate}rad)`,
+        borderRadius,
+      }}
+    />
+  );
+}
 
 // Card dimensions (matching mobile app constants)
 const ASPECT_RATIO = 4 / 3;
 const CARD_WIDTH = 450;
 const CARD_HEIGHT = CARD_WIDTH * ASPECT_RATIO;
-
-// Convert values from editor (pixels) to backend values (percentages)
-const convertToBackendValues = (elements: CardElement[]) => {
-  return elements.map((el) => {
-    return {
-      ...el,
-      type: "text" as const,
-      fontStyleIndex: el.fontStyleIndex || 0,
-      color: el.color || "#000000",
-      scale: el.scale || 1,
-      rotate: el.rotate || 0,
-      bold: !!el.bold,
-      italic: !!el.italic,
-      alignment: el.alignment || "center",
-      lineHeight: el.lineHeight || 1,
-      fontSize: el.fontSize || 5,
-    };
-  });
-};
 
 export default function CardEditor({
   initialData,
@@ -87,9 +108,9 @@ export default function CardEditor({
     initialData || {
       name: "New Card",
       category_id: "",
-      sub_category_id: "",
+      subcategory_id: "",
       elements: [],
-    }
+    },
   );
 
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
@@ -98,7 +119,6 @@ export default function CardEditor({
   const [backgroundImage, setBackgroundImage] = useState<File>();
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const colorInputRef = useRef<HTMLInputElement>(null);
   const [containerSize, setContainerSize] = useState({
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
@@ -111,6 +131,7 @@ export default function CardEditor({
 
   const [showHorAlignLine, setShowHorAlignLine] = useState(false);
   const [showVerAlignLine, setShowVerAlignLine] = useState(false);
+  const [saveLoader, setSaveLoader] = useState(false);
 
   // useEffect(() => {
   //   if (containerRef.current) {
@@ -163,8 +184,30 @@ export default function CardEditor({
   };
 
   // Element management
+  const addShapeElement = () => {
+    const newElement: ShapeElement = {
+      id: Date.now().toString(),
+      type: "shape",
+      shapeType: "line",
+      positionX: 0,
+      positionY: 0,
+      color: "#000000FF",
+      width: 20, // % of container width
+      height: 2, // thickness in pixels
+      rotate: 0,
+      borderRadius: 2,
+    };
+    const newCardData = {
+      ...cardData,
+      elements: [...cardData.elements, newElement],
+    };
+    setCardData(newCardData);
+    addToHistory(newCardData);
+    setSelectedElement(newElement.id);
+  };
+
   const addElement = () => {
-    const newElement: CardElement = {
+    const newElement: TextElement = {
       id: Date.now().toString(),
       type: "text",
       text: "New text",
@@ -203,18 +246,13 @@ export default function CardEditor({
   };
 
   const updateElement = (id: string, updates: Partial<CardElement>) => {
-    const newCardData = {
+    const newCardData: Card = {
       ...cardData,
       elements: cardData.elements.map((el) => {
         if (el.id !== id) return el;
-
-        // Create the updated element
-        const updatedElement = { ...el, ...updates };
-
-        return updatedElement;
+        return { ...el, ...updates } as CardElement;
       }),
     };
-
     setCardData(newCardData);
     addToHistory(newCardData);
   };
@@ -230,7 +268,7 @@ export default function CardEditor({
   const handleDragStop = (
     id: string,
     e: any,
-    data: { x: number; y: number }
+    data: { x: number; y: number },
   ) => {
     setShowHorAlignLine(false);
     setShowVerAlignLine(false);
@@ -254,15 +292,24 @@ export default function CardEditor({
     });
   };
   // Image handling
+  const hasImage = !!(backgroundImage || cardData.background_image);
   const { getRootProps, getInputProps } = useDropzone({
     accept: {
       "image/*": [".jpeg", ".jpg", ".png", ".gif"],
     },
+    noClick: hasImage,
     onDrop: (acceptedFiles) => {
       const file = acceptedFiles[0];
       setBackgroundImage(file);
     },
   });
+
+  const handleClearBackgroundImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setBackgroundImage(undefined);
+    setCardData((prev) => ({ ...prev, background_image: undefined }));
+  };
 
   // Inject font-face declarations
   useEffect(() => {
@@ -344,46 +391,38 @@ export default function CardEditor({
 
   // Save card data
   const handleSave = async () => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || saveLoader) return;
     setSelectedElement(null);
-    const elementsForBackend = convertToBackendValues(cardData.elements);
+    setSaveLoader(true);
 
-    let previewImage: File | undefined = undefined;
-    const dropzone = containerRef.current.querySelector(
-      "[data-dropzone]"
-    ) as HTMLElement;
-    let prevDropzoneDisplay = "";
-    if (dropzone) {
-      prevDropzoneDisplay = dropzone.style.display;
-      dropzone.style.display = "none";
+    try {
+      let previewImage: File | undefined = undefined;
+      const deleteBtn = containerRef.current.querySelector(
+        "#clear-background-image-button",
+      ) as HTMLElement | null;
+      if (deleteBtn) deleteBtn.style.display = "none";
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      const dataUrl = await htmlToImage.toPng(containerRef.current, {
+        pixelRatio: 0.5,
+      });
+
+      if (deleteBtn) deleteBtn.style.display = "";
+
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      previewImage = new File([blob], "preview.png", { type: "image/png" });
+      console.log("file", previewImage);
+      await onSave({
+        ...cardData,
+        background_image: backgroundImage || undefined,
+        preview_image: previewImage || undefined,
+        aspect_ratio: containerSize.aspectRatio,
+      });
+    } finally {
+      setSaveLoader(false);
     }
-    await new Promise((r) => setTimeout(r, 50));
-    const canvas = await html2canvas(containerRef.current, {
-      backgroundColor: null,
-      useCORS: true,
-      scale: 0.5,
-    });
-    if (dropzone) dropzone.style.display = prevDropzoneDisplay;
-    previewImage = await new Promise<File | undefined>((resolve) => {
-      canvas.toBlob(
-        (blob: Blob | null) => {
-          if (!blob) return resolve(undefined);
-          const file = new File([blob], "preview.png", { type: "image/png" });
-          console.log("file", file);
-          resolve(file);
-        },
-        "image/png",
-        0.3
-      );
-    });
-
-    onSave({
-      ...cardData,
-      elements: elementsForBackend,
-      background_image: backgroundImage || undefined,
-      preview_image: previewImage || undefined,
-      aspect_ratio: containerSize.aspectRatio,
-    });
   };
 
   // Get selected element
@@ -422,13 +461,26 @@ export default function CardEditor({
             <PlusIcon className="h-4 w-4 mr-1" />
             Add Text
           </button>
+          <button
+            type="button"
+            className="px-3 py-1 bg-primary-100 text-primary-800 rounded flex items-center text-sm"
+            onClick={addShapeElement}
+          >
+            <Square2StackIcon className="h-4 w-4 mr-1" />
+            Add Line
+          </button>
         </div>
         <button
-          className="px-4 py-1 bg-primary-600 text-white rounded flex items-center"
+          className="px-4 py-1 bg-primary-600 text-white rounded flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
           onClick={handleSave}
+          disabled={saveLoader}
         >
-          <CheckIcon className="h-4 w-4 mr-1" />
-          Save Card
+          {saveLoader ? (
+            <ArrowPathIcon className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <CheckIcon className="h-4 w-4 mr-1" />
+          )}
+          {saveLoader ? "Saving..." : "Save Card"}
         </button>
       </div>
 
@@ -436,12 +488,13 @@ export default function CardEditor({
         <div
           ref={containerRef}
           className="relative overflow-hidden flex items-center justify-center"
+          onClick={() => setSelectedElement(null)}
           style={{
             backgroundImage: backgroundImage
               ? `url(${URL.createObjectURL(backgroundImage)})`
               : cardData.background_image
-              ? `url(${cardData.background_image})`
-              : "none",
+                ? `url(${cardData.background_image})`
+                : "none",
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
@@ -468,12 +521,24 @@ export default function CardEditor({
               }}
             />
           )}
+          {hasImage && (
+            <button
+              id="clear-background-image-button"
+              type="button"
+              onClick={handleClearBackgroundImage}
+              className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/50 hover:bg-red-500 text-white transition-colors"
+              title="Delete image"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          )}
           <div
             {...getRootProps()}
             data-dropzone
-            className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 cursor-pointer"
+            className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50"
             style={{
-              opacity: backgroundImage || cardData.background_image ? 0 : 1,
+              opacity: hasImage ? 0 : 1,
+              cursor: hasImage ? "default" : "pointer",
               borderStyle: "none",
             }}
           >
@@ -498,49 +563,63 @@ export default function CardEditor({
               onStop={(e, data) => handleDragStop(element.id, e, data)}
               bounds="parent"
             >
-              <div
-                className={`absolute cursor-move ${
-                  selectedElement === element.id
-                    ? "ring-2 ring-primary-500"
-                    : ""
-                }`}
-                onClick={() => setSelectedElement(element.id)}
-              >
+              <div className={"absolute"}>
                 <div
+                  className={`cursor-move ${
+                    selectedElement === element.id
+                      ? "ring-2 ring-primary-500"
+                      : ""
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedElement(element.id);
+                  }}
                   style={{
-                    fontFamily:
-                      element.bold && EDITOR_FONTS[element.fontStyleIndex]?.bold
-                        ? EDITOR_FONTS[element.fontStyleIndex].bold!
-                        : EDITOR_FONTS[element.fontStyleIndex]?.regular ||
-                          "Arial",
-                    fontSize: `${
-                      (element.fontSize / 100) * containerSize.width
-                    }px`,
-                    color: element.color,
-                    // fontWeight: element.bold && !EDITOR_FONTS[element.fontStyleIndex]?.bold ? 'bold' : 'normal',
-                    // fontStyle: element.italic ? 'italic' : 'normal',
-                    textAlign: element.alignment,
-                    padding: "5px",
-                    minWidth: "50px",
-                    lineHeight: element.lineHeight,
                     transform: `rotate(${element.rotate}rad)`,
-                    whiteSpace: "pre-wrap",
                   }}
                 >
-                  {element.text}
-                </div>
+                  {isTextElement(element) ? (
+                    <div
+                      style={{
+                        fontFamily:
+                          element.bold &&
+                          EDITOR_FONTS[element.fontStyleIndex]?.bold
+                            ? EDITOR_FONTS[element.fontStyleIndex].bold!
+                            : EDITOR_FONTS[element.fontStyleIndex]?.regular ||
+                              "Arial",
+                        fontSize: `${
+                          (element.fontSize / 100) * containerSize.width
+                        }px`,
+                        color: element.color,
+                        textAlign: element.alignment,
+                        padding: "5px",
+                        minWidth: "50px",
+                        lineHeight: element.lineHeight,
+                        // transform: `rotate(${element.rotate}rad)`,
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {element.text}
+                    </div>
+                  ) : (
+                    <LineShape
+                      element={element}
+                      containerSize={containerSize}
+                    />
+                  )}
 
-                {selectedElement === element.id && (
-                  <button
-                    className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeElement(element.id);
-                    }}
-                  >
-                    <TrashIcon className="h-3 w-3" />
-                  </button>
-                )}
+                  {selectedElement === element.id && (
+                    <button
+                      className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeElement(element.id);
+                      }}
+                    >
+                      <TrashIcon className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             </Draggable>
           ))}
@@ -548,265 +627,18 @@ export default function CardEditor({
 
         <div className="w-80 border-gray-200 p-4 overflow-y-auto">
           {selectedElementData ? (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Text
-                </label>
-                <textarea
-                  value={selectedElementData.text}
-                  onChange={(e) =>
-                    updateElement(selectedElementData.id, {
-                      text: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Font Style
-                </label>
+            isShapeElement(selectedElementData) ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Line
+                  </label>
+                </div>
                 <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setFontDropdownOpen(!fontDropdownOpen)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-left flex justify-between items-center"
-                    style={{
-                      fontFamily: `"${
-                        EDITOR_FONTS[selectedElementData.fontStyleIndex].regular
-                      }", sans-serif`,
-                    }}
-                  >
-                    {EDITOR_FONTS[selectedElementData.fontStyleIndex].name}
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-
-                  {fontDropdownOpen && (
-                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                      {EDITOR_FONTS.map((font, index) => (
-                        <div
-                          key={index}
-                          className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-primary-50 ${
-                            selectedElementData.fontStyleIndex === index
-                              ? "bg-primary-100"
-                              : ""
-                          }`}
-                          onClick={() => {
-                            updateElement(selectedElementData.id, {
-                              fontStyleIndex: index,
-                            });
-                            setFontDropdownOpen(false);
-                          }}
-                          style={{
-                            fontFamily: `"${font.regular}", sans-serif`,
-                            fontSize: "16px",
-                          }}
-                        >
-                          {font.name}
-                          {selectedElementData.fontStyleIndex === index && (
-                            <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary-600">
-                              <svg
-                                className="h-5 w-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Font Size
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  step={1}
-                  value={selectedElementData.fontSize}
-                  onChange={(e) =>
-                    updateElement(selectedElementData.id, {
-                      fontSize: parseInt(e.target.value),
-                    })
-                  }
-                  className="w-full"
-                />
-                <div className="text-right text-sm text-gray-500">
-                  {selectedElementData.fontSize}%
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Line Height
-                </label>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="3"
-                  step="0.1"
-                  value={selectedElementData.lineHeight}
-                  onChange={(e) =>
-                    updateElement(selectedElementData.id, {
-                      lineHeight: parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full"
-                />
-                <div className="text-right text-sm text-gray-500">
-                  {selectedElementData.lineHeight}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Style
-                </label>
-                <div className="flex space-x-2">
-                  <button
-                    className={`px-3 py-1 border ${
-                      selectedElementData.bold &&
-                      EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
-                        ? "bg-primary-100 border-primary-300"
-                        : "bg-white border-gray-300"
-                    } rounded-md font-bold ${
-                      !EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
-                        ? "opacity-50 cursor-not-allowed"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      if (
-                        EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
-                      ) {
-                        updateElement(selectedElementData.id, {
-                          bold: !selectedElementData.bold,
-                        });
-                      }
-                    }}
-                    disabled={
-                      !EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
-                    }
-                    title={
-                      !EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
-                        ? "Bold not available for this font"
-                        : "Toggle bold"
-                    }
-                  >
-                    B
-                  </button>
-                  {/* <button
-                    className={`px-3 py-1 border ${selectedElementData.italic ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md italic`}
-                    onClick={() => updateElement(selectedElementData.id, { italic: !selectedElementData.italic })}
-                  >
-                    I
-                  </button> */}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Alignment
-                </label>
-                <div className="flex space-x-2">
-                  <button
-                    className={`px-3 py-1 border ${
-                      selectedElementData.alignment === "left"
-                        ? "bg-primary-100 border-primary-300"
-                        : "bg-white border-gray-300"
-                    } rounded-md`}
-                    onClick={() =>
-                      updateElement(selectedElementData.id, {
-                        alignment: "left",
-                      })
-                    }
-                  >
-                    L
-                  </button>
-                  <button
-                    className={`px-3 py-1 border ${
-                      selectedElementData.alignment === "center"
-                        ? "bg-primary-100 border-primary-300"
-                        : "bg-white border-gray-300"
-                    } rounded-md`}
-                    onClick={() =>
-                      updateElement(selectedElementData.id, {
-                        alignment: "center",
-                      })
-                    }
-                  >
-                    C
-                  </button>
-                  <button
-                    className={`px-3 py-1 border ${
-                      selectedElementData.alignment === "right"
-                        ? "bg-primary-100 border-primary-300"
-                        : "bg-white border-gray-300"
-                    } rounded-md`}
-                    onClick={() =>
-                      updateElement(selectedElementData.id, {
-                        alignment: "right",
-                      })
-                    }
-                  >
-                    R
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rotation
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="360"
-                  value={Math.round(
-                    selectedElementData.rotate * (180 / Math.PI)
-                  )} // Convert radians to degrees for display
-                  onChange={(e) =>
-                    updateElement(selectedElementData.id, {
-                      rotate: (parseInt(e.target.value) * Math.PI) / 180, // Convert degrees to radians for storage
-                    })
-                  }
-                  className="w-full"
-                />
-                <div className="text-right text-sm text-gray-500">
-                  {Math.round(selectedElementData.rotate * (180 / Math.PI))}°
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Color
-                </label>
-                <div className="grid grid-cols-4 gap-2 mt-2">
-                  {/* Multiple color icon at first index */}
-                  <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Color
+                  </label>
+                  <div className="grid grid-cols-4 gap-2 mt-2">
                     <button
                       type="button"
                       onClick={() => setShowColorPicker((v) => !v)}
@@ -820,107 +652,534 @@ export default function CardEditor({
                           "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)",
                       }}
                       title="Custom color"
-                    ></button>
+                    />
                     {showColorPicker && (
-                      <div className="absolute z-50 mt-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg left-10">
+                      <div className="absolute z-50 left-0 mt-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg">
                         <HexAlphaColorPicker
                           color={selectedElementData.color}
                           onChange={(color) =>
                             updateElement(selectedElementData.id, { color })
                           }
                         />
-                        <input
-                          type="text"
-                          className="mt-2 w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                          value={selectedElementData.color}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            // Accept hex with or without #, and with alpha
-                            if (
-                              /^#?[0-9A-Fa-f]{6,8}$/.test(val.replace("#", ""))
-                            ) {
-                              updateElement(selectedElementData.id, {
-                                color: val.startsWith("#") ? val : `#${val}`,
-                              });
-                            } else {
-                              updateElement(selectedElementData.id, {
-                                color: val,
-                              });
-                            }
-                          }}
-                          placeholder="#RRGGBB or #RRGGBBAA"
-                          maxLength={9}
+                        <button
+                          type="button"
+                          className="mt-2 px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                          onClick={() => setShowColorPicker(false)}
+                        >
+                          Done
+                        </button>
+                      </div>
+                    )}
+                    {colorsList.map((color, index) => (
+                      <button
+                        key={index}
+                        onClick={() =>
+                          updateElement(selectedElementData.id, { color })
+                        }
+                        className={`w-8 h-8 rounded-full border border-gray-300 ${
+                          selectedElementData.color === color
+                            ? "ring-2 ring-primary-500 ring-offset-2"
+                            : ""
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Width (%)
+                  </label>
+                  <input
+                    type="range"
+                    min="5"
+                    max="100"
+                    value={selectedElementData.width}
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        width: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {selectedElementData.width}%
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Height / thickness (px)
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="30"
+                    value={selectedElementData.height}
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        height: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {selectedElementData.height}px
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Border radius (px)
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="50"
+                    value={selectedElementData.borderRadius ?? 0}
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        borderRadius: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {selectedElementData.borderRadius ?? 0}px
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Rotation
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="360"
+                    value={Math.round(
+                      selectedElementData.rotate * (180 / Math.PI),
+                    )}
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        rotate: (parseInt(e.target.value) * Math.PI) / 180,
+                      })
+                    }
+                    className="w-full"
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {Math.round(selectedElementData.rotate * (180 / Math.PI))}°
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Position
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500">X %</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedElementData.positionX)}
+                        onChange={(e) =>
+                          updateElement(selectedElementData.id, {
+                            positionX: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500">Y %</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedElementData.positionY)}
+                        onChange={(e) =>
+                          updateElement(selectedElementData.id, {
+                            positionY: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Text
+                  </label>
+                  <textarea
+                    value={selectedElementData.text}
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        text: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Font Style
+                  </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setFontDropdownOpen(!fontDropdownOpen)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-left flex justify-between items-center"
+                      style={{
+                        fontFamily: `"${
+                          EDITOR_FONTS[selectedElementData.fontStyleIndex]
+                            .regular
+                        }", sans-serif`,
+                      }}
+                    >
+                      {EDITOR_FONTS[selectedElementData.fontStyleIndex].name}
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                          clipRule="evenodd"
                         />
-                        <div className="flex justify-end mt-2">
-                          <button
-                            type="button"
-                            className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-                            onClick={() => setShowColorPicker(false)}
+                      </svg>
+                    </button>
+
+                    {fontDropdownOpen && (
+                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                        {EDITOR_FONTS.map((font, index) => (
+                          <div
+                            key={index}
+                            className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-primary-50 ${
+                              selectedElementData.fontStyleIndex === index
+                                ? "bg-primary-100"
+                                : ""
+                            }`}
+                            onClick={() => {
+                              updateElement(selectedElementData.id, {
+                                fontStyleIndex: index,
+                              });
+                              setFontDropdownOpen(false);
+                            }}
+                            style={{
+                              fontFamily: `"${font.regular}", sans-serif`,
+                              fontSize: "16px",
+                            }}
                           >
-                            Done
-                          </button>
-                        </div>
+                            {font.name}
+                            {selectedElementData.fontStyleIndex === index && (
+                              <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-primary-600">
+                                <svg
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Regular color palette */}
-                  {colorsList.map((color, index) => (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Font Size
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    step={1}
+                    value={selectedElementData.fontSize}
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        fontSize: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {selectedElementData.fontSize}%
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Line Height
+                  </label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3"
+                    step="0.1"
+                    value={selectedElementData.lineHeight}
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        lineHeight: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full"
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {selectedElementData.lineHeight}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Style
+                  </label>
+                  <div className="flex space-x-2">
                     <button
-                      key={index}
-                      onClick={() => {
-                        updateElement(selectedElementData.id, {
-                          color: color,
-                        });
-                      }}
-                      className={`w-8 h-8 rounded-full border border-gray-300 ${
-                        selectedElementData.color === color
-                          ? "ring-2 ring-primary-500 ring-offset-2"
+                      className={`px-3 py-1 border ${
+                        selectedElementData.bold &&
+                        EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
+                          ? "bg-primary-100 border-primary-300"
+                          : "bg-white border-gray-300"
+                      } rounded-md font-bold ${
+                        !EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
+                          ? "opacity-50 cursor-not-allowed"
                           : ""
                       }`}
-                      style={{ backgroundColor: color }}
-                      aria-label={`Color ${index}`}
-                    />
-                  ))}
+                      onClick={() => {
+                        if (
+                          EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
+                        ) {
+                          updateElement(selectedElementData.id, {
+                            bold: !selectedElementData.bold,
+                          });
+                        }
+                      }}
+                      disabled={
+                        !EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
+                      }
+                      title={
+                        !EDITOR_FONTS[selectedElementData.fontStyleIndex]?.bold
+                          ? "Bold not available for this font"
+                          : "Toggle bold"
+                      }
+                    >
+                      B
+                    </button>
+                    {/* <button
+                    className={`px-3 py-1 border ${selectedElementData.italic ? 'bg-primary-100 border-primary-300' : 'bg-white border-gray-300'} rounded-md italic`}
+                    onClick={() => updateElement(selectedElementData.id, { italic: !selectedElementData.italic })}
+                  >
+                    I
+                  </button> */}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Position
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-500">X</label>
-                    <input
-                      type="number"
-                      value={Math.round(selectedElementData.positionX)}
-                      onChange={(e) => {
-                        const newX = parseInt(e.target.value);
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Alignment
+                  </label>
+                  <div className="flex space-x-2">
+                    <button
+                      className={`px-3 py-1 border ${
+                        selectedElementData.alignment === "left"
+                          ? "bg-primary-100 border-primary-300"
+                          : "bg-white border-gray-300"
+                      } rounded-md`}
+                      onClick={() =>
                         updateElement(selectedElementData.id, {
-                          positionX: newX,
-                        });
-                      }}
-                      className="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
+                          alignment: "left",
+                        })
+                      }
+                    >
+                      L
+                    </button>
+                    <button
+                      className={`px-3 py-1 border ${
+                        selectedElementData.alignment === "center"
+                          ? "bg-primary-100 border-primary-300"
+                          : "bg-white border-gray-300"
+                      } rounded-md`}
+                      onClick={() =>
+                        updateElement(selectedElementData.id, {
+                          alignment: "center",
+                        })
+                      }
+                    >
+                      C
+                    </button>
+                    <button
+                      className={`px-3 py-1 border ${
+                        selectedElementData.alignment === "right"
+                          ? "bg-primary-100 border-primary-300"
+                          : "bg-white border-gray-300"
+                      } rounded-md`}
+                      onClick={() =>
+                        updateElement(selectedElementData.id, {
+                          alignment: "right",
+                        })
+                      }
+                    >
+                      R
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500">Y</label>
-                    <input
-                      type="number"
-                      value={Math.round(selectedElementData.positionY)}
-                      onChange={(e) => {
-                        const newY = parseInt(e.target.value);
-                        updateElement(selectedElementData.id, {
-                          positionY: newY,
-                        });
-                      }}
-                      className="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Rotation
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="360"
+                    value={Math.round(
+                      selectedElementData.rotate * (180 / Math.PI),
+                    )} // Convert radians to degrees for display
+                    onChange={(e) =>
+                      updateElement(selectedElementData.id, {
+                        rotate: (parseInt(e.target.value) * Math.PI) / 180, // Convert degrees to radians for storage
+                      })
+                    }
+                    className="w-full"
+                  />
+                  <div className="text-right text-sm text-gray-500">
+                    {Math.round(selectedElementData.rotate * (180 / Math.PI))}°
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Color
+                  </label>
+                  <div className="grid grid-cols-4 gap-2 mt-2">
+                    {/* Multiple color icon at first index */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowColorPicker((v) => !v)}
+                        className={`w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center cursor-pointer ${
+                          !colorsList.includes(selectedElementData.color)
+                            ? "ring-2 ring-primary-500 ring-offset-2"
+                            : ""
+                        }`}
+                        style={{
+                          background:
+                            "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)",
+                        }}
+                        title="Custom color"
+                      ></button>
+                      {showColorPicker && (
+                        <div className="absolute z-50 mt-2 p-3 bg-white border border-gray-300 rounded-lg shadow-lg left-10">
+                          <HexAlphaColorPicker
+                            color={selectedElementData.color}
+                            onChange={(color) =>
+                              updateElement(selectedElementData.id, { color })
+                            }
+                          />
+                          <input
+                            type="text"
+                            className="mt-2 w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            value={selectedElementData.color}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              // Accept hex with or without #, and with alpha
+                              if (
+                                /^#?[0-9A-Fa-f]{6,8}$/.test(
+                                  val.replace("#", ""),
+                                )
+                              ) {
+                                updateElement(selectedElementData.id, {
+                                  color: val.startsWith("#") ? val : `#${val}`,
+                                });
+                              } else {
+                                updateElement(selectedElementData.id, {
+                                  color: val,
+                                });
+                              }
+                            }}
+                            placeholder="#RRGGBB or #RRGGBBAA"
+                            maxLength={9}
+                          />
+                          <div className="flex justify-end mt-2">
+                            <button
+                              type="button"
+                              className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded"
+                              onClick={() => setShowColorPicker(false)}
+                            >
+                              Done
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Regular color palette */}
+                    {colorsList.map((color, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          updateElement(selectedElementData.id, {
+                            color: color,
+                          });
+                        }}
+                        className={`w-8 h-8 rounded-full border border-gray-300 ${
+                          selectedElementData.color === color
+                            ? "ring-2 ring-primary-500 ring-offset-2"
+                            : ""
+                        }`}
+                        style={{ backgroundColor: color }}
+                        aria-label={`Color ${index}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Position
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500">X</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedElementData.positionX)}
+                        onChange={(e) => {
+                          const newX = parseInt(e.target.value);
+                          updateElement(selectedElementData.id, {
+                            positionX: newX,
+                          });
+                        }}
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500">Y</label>
+                      <input
+                        type="number"
+                        value={Math.round(selectedElementData.positionY)}
+                        onChange={(e) => {
+                          const newY = parseInt(e.target.value);
+                          updateElement(selectedElementData.id, {
+                            positionY: newY,
+                          });
+                        }}
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )
           ) : (
             <div className="text-gray-500 text-center p-8">
               Select an element to edit its properties
