@@ -901,12 +901,12 @@ export default function CardEditor({
                   <input
                     type="range"
                     min="1"
-                    max="100"
-                    step={1}
+                    max="50"
+                    step={0.5}
                     value={selectedElementData.fontSize}
                     onChange={(e) =>
                       updateElement(selectedElementData.id, {
-                        fontSize: parseInt(e.target.value),
+                        fontSize: parseFloat(e.target.value),
                       })
                     }
                     className="w-full"

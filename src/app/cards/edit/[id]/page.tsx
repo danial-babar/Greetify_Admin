@@ -108,9 +108,6 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
       };
 
       fetchSubCategories();
-
-      // Reset subcategory selection
-      setSelectedSubCategoryId("");
     } else {
       setFilteredSubCategories([]);
       setSelectedSubCategoryId("");
@@ -233,7 +230,13 @@ export default function EditCardPage({ params }: { params: { id: string } }) {
                     id="category"
                     name="category"
                     value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    onChange={(e) => {
+                      const newCategoryId = e.target.value;
+                      if (newCategoryId !== selectedCategoryId) {
+                        setSelectedSubCategoryId("");
+                      }
+                      setSelectedCategoryId(newCategoryId);
+                    }}
                     disabled={loading}
                     className="block h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-sm transition hover:border-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                   >
